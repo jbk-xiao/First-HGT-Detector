@@ -40,10 +40,13 @@ is_protected_list = []
 is_default_profile_image_list = []
 has_tweets_list = []
 
-user_df["verified"].apply(lambda x: is_verified_list.append(1) if x == "True " else is_verified_list.append(0))
-user_df["protected"].apply(lambda x: is_protected_list.append(1) if x == "True " else is_protected_list.append(0))
+tqdm.pandas(desc="is verified list")
+user_df["verified"].progress_apply(lambda x: is_verified_list.append(1) if x == "True " else is_verified_list.append(0))
+tqdm.pandas(desc="is protected list")
+user_df["protected"].progress_apply(lambda x: is_protected_list.append(1) if x == "True " else is_protected_list.append(0))
 default_profile_image_url = "http://abs.twimg.com/sticky/default_profile_images/default_profile_normal.png "
-user_df["profile_image_url"].apply(lambda x: is_default_profile_image_list.append(1) if x == default_profile_image_url
+tqdm.pandas(desc="is default image url list")
+user_df["profile_image_url"].progress_apply(lambda x: is_default_profile_image_list.append(1) if x == default_profile_image_url
 else is_default_profile_image_list.append(0))
 def check_has_tweets_list(public_metrics):
     # public_metrics = pd.DataFrame(public_metrics)
@@ -54,7 +57,8 @@ def check_has_tweets_list(public_metrics):
             has_tweets_list.append(0)
     else:
         has_tweets_list.append(0)
-user_df["public_metrics"].apply(check_has_tweets_list)
+tqdm.pandas(desc="check has tweets list")
+user_df["public_metrics"].progress_apply(check_has_tweets_list)
 
 cat_props = np.transpose([is_verified_list, is_protected_list, is_default_profile_image_list, has_tweets_list])
 cat_props_tensor = torch.tensor(cat_props, dtype=torch.float)
@@ -121,7 +125,8 @@ listed_count_tensor = fill_and_z_score(listed_count_list)
 active_days_tensor = fill_and_z_score(active_days_list)
 screen_name_length_tensor = fill_and_z_score(screen_name_length_list)
 
-num_props_tensor = torch.cat([followers_count_tensor, following_count_tensor, listed_count_tensor, active_days_tensor, screen_name_length_tensor])
+num_props_tensor = torch.cat([followers_count_tensor, following_count_tensor, listed_count_tensor, active_days_tensor,
+                              screen_name_length_tensor], dim=1)
 torch.save(num_props_tensor, rf"{tmp_files_root}/num_props_tensor.pt")
 #%% md
 ### 生成用户描述的表示
