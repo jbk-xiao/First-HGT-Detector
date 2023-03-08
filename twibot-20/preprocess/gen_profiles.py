@@ -106,8 +106,13 @@ user_df["public_metrics"].progress_apply(get_public_metrics_num)
 
 # created_at = pd.to_datetime(user_df["created_at"], unit='s')
 init_date = datetime.strptime("Tue Sep 1 00:00:00 +0000 2020 ", "%a %b %d %X %z %Y ")
-tqdm.pandas(desc="get active days from created_at")
-user_df["created_at"].progress_apply(lambda x: active_days_list.append(int((init_date - x).days)))
+for created_at in tqdm(user_df["created_at"], desc="get active days from created_at"):
+    if created_at is None:
+        active_days_list.append(0)
+    else:
+        active_days_list.append((init_date - created_at).days)
+# tqdm.pandas(desc="get active days from created_at")
+# user_df["created_at"].progress_apply(lambda x: active_days_list.append(int((init_date - x).days)))
 
 tqdm.pandas(desc="get the length of username")
 user_df["username"].progress_apply(lambda x: screen_name_length_list.append(len(x)) if x is not None
@@ -118,6 +123,7 @@ def fill_and_z_score(num_prop_list):
     num_prop = (num_prop_df - num_prop_df.mean()) / num_prop_df.std()
     num_prop_tensor = torch.tensor(np.array(num_prop), dtype=torch.float32)
     return num_prop_tensor
+
 
 followers_count_tensor = fill_and_z_score(followers_count_list)
 following_count_tensor = fill_and_z_score(following_count_list)
