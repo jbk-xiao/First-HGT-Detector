@@ -1,7 +1,7 @@
 #%%
 import pandas as pd
 import torch
-import tqdm
+from tqdm import tqdm
 import ijson
 from transformers import pipeline
 #%%
@@ -11,7 +11,7 @@ tmp_files_root = r"E:\social-bot-data\code\First-HGT-Detector\twibot-20\preproce
 node2id_list = pd.read_csv(rf"{datasets_root}\node2id.csv", dtype={"node_id": str, "num_id": int})
 # tweets: 1-33488192, users: 33488193-33713010
 node2id = {}
-for row in node2id_list.iterrows():
+for row in tqdm(node2id_list.iterrows(), desc="Generate node2id dict."):
     node2id[row[1]["node_id"]] = row[1]["num_id"]
 #%% md
 ### 利用node文件按顺序生成所有推文的向量表示
