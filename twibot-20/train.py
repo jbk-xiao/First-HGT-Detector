@@ -1,8 +1,8 @@
 import torch
 from torch import nn
-from torch_geometric.data import HeteroData
 from torch_geometric.loader import NeighborLoader
-from tqdm.notebook import tqdm
+from tqdm import tqdm
+from datetime import datetime
 
 from model import HGTDetector
 from build_hetero_data import build_hetero_data
@@ -12,6 +12,7 @@ device = "cuda:0"
 model = HGTDetector(n_cat_prop=4, n_num_prop=5, des_size=768, tweet_size=768, embedding_dimension=128).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
+print(f"{datetime.now()}----Loading data...")
 data = build_hetero_data().to(device, 'x', 'y')
 
 train_loader = NeighborLoader(
@@ -28,6 +29,7 @@ val_loader = NeighborLoader(
     input_nodes=('user', data['user'].val_mask),
     batch_size=128,
     num_workers=0)
+print(f"{datetime.now()}----Data loaded.")
 
 
 @torch.no_grad()

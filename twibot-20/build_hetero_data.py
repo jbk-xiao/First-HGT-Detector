@@ -2,16 +2,20 @@ import torch
 from torch_geometric.data import HeteroData
 
 import numpy as np
+from datetime import datetime
 
 
 def build_hetero_data() -> HeteroData:
     tmp_files_root = r"./preprocess/tmp-files"
+    print(f"{datetime.now()}----Loading properties...")
     cat_props = torch.split(torch.load(rf"{tmp_files_root}/cat_props_tensor.pt"), 11826)[0]
     num_props = torch.split(torch.load(rf"{tmp_files_root}/num_props_tensor.pt"), 11826)[0]
     des = torch.split(torch.load(rf"{tmp_files_root}/des_tensor.pt"), 11826)[0]
 
+    print(f"{datetime.now()}----Loading label...")
     label = torch.load(rf"{tmp_files_root}/label_tensor.pt")
 
+    print(f"{datetime.now()}----Loading tweet...")
     tweet = torch.load(rf"{tmp_files_root}/tweet_tensor.pt")
 
     follow = torch.load(rf"{tmp_files_root}/follow_edge_index.pt")
@@ -30,6 +34,7 @@ def build_hetero_data() -> HeteroData:
     test_index = torch.zeros(11826)
     test_index[test_idx] = 1
 
+    print(f"{datetime.now()}----Building data...")
     data = HeteroData(
         {
             'user': {
