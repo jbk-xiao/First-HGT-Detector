@@ -48,16 +48,16 @@ def train():
         batch = batch.to(device, 'edge_index')
         batch_size = batch['user'].batch_size
         mask = batch['user'].train_mask
-        out = model(batch.x_dict, batch.edge_index_dict)[mask]
+        out = model(batch.x_dict, batch.edge_index_dict)
         print(f"out[mask]: {out}")
         print(f"out[mask].argmax(-1): {out.argmax(dim=-1)}")
         print(f"batch['user'].y[mask]: {batch['user'].y[mask]}")
-        loss = nn.functional.cross_entropy(out, batch['user'].y[mask].long())
+        loss = nn.functional.cross_entropy(out, batch['user'].y.long())
         loss.backward()
         optimizer.step()
 
-        total_examples += batch_size
-        total_loss += float(loss) * batch_size
+        total_examples += len(out)
+        total_loss += float(loss) * len(out)
 
     return total_loss / total_examples
 
@@ -79,8 +79,8 @@ def test(loader):
         print(f"pred[mask]: {pred[mask]}")
         print(f"batch['user'].y: {batch['user'].y}")
         print(f"batch['user'].y[mask]: {batch['user'].y[mask]}")
-        total_examples += len(mask)
-        total_correct += int((pred[mask] == batch['user'].y[mask]).sum())
+        total_examples += len(out)
+        total_correct += int((pred == batch['user'].y).sum())
 
     return total_correct / total_examples
 
