@@ -60,7 +60,7 @@ class HGTDetector(nn.Module):
         super(HGTDetector, self).__init__()
 
         meta_node = ["user", "tweet"]
-        meta_edge = [("user", "follow", "user"), ("user", "friend", "user"), ("user", "post", "tweet")]
+        meta_edge = [("user", "follow", "user"), ("user", "friend", "user"), ("user", "post", "tweet"), ("tweet", "rev_post", "user")]
 
         self.module_dict = nn.ModuleDict()
         self.module_dict["user"] = PropertyVector(n_cat_prop, n_num_prop, des_size, embedding_dimension, dropout)
