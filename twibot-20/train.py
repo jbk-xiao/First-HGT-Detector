@@ -35,7 +35,7 @@ test_data = data.subgraph(
         'user': data['user'].test_mask,
         'tweet': data['tweet'].test_mask
     }
-).to("cuda:0")
+).to(device)
 
 print(f"{datetime.now()}----Data loaded.")
 
@@ -95,11 +95,10 @@ def val(loader):
 
 @torch.no_grad()
 def test(test_data):
-    model.to("cuda:0")
     model.eval()
 
-    out = model(test_data.x_dict, test_data.edge_index_dict).argmax(dim=-1).cpu()
-    label = test_data['user'].y.cpu()
+    out = model(test_data.x_dict, test_data.edge_index_dict).argmax(dim=-1)
+    label = test_data['user'].y
     accuracy = accuracy_score(label, out)
     f1 = f1_score(label, out)
     precision = precision_score(label, out)
