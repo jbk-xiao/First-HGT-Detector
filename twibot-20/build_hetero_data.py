@@ -1,5 +1,6 @@
 import torch
 from torch_geometric.data import HeteroData
+from torch_geometric.transforms import ToUndirected
 
 import numpy as np
 from datetime import datetime
@@ -57,5 +58,7 @@ def build_hetero_data() -> HeteroData:
         user__friend__user={'edge_index': friend},
         user__post__tweet={'edge_index': post}
     )
+    undirected_transform = ToUndirected(merge=True)
+    data = undirected_transform(data)
     return data
 

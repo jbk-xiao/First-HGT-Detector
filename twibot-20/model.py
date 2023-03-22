@@ -67,6 +67,7 @@ class HGTDetector(nn.Module):
         self.module_dict["tweet"] = TweetVector(tweet_size, embedding_dimension, dropout)
 
         self.HGT_layer1 = HGTConv(in_channels=embedding_dimension, out_channels=embedding_dimension, metadata=(meta_node, meta_edge))
+        self.HGT_layer2 = HGTConv(in_channels=embedding_dimension, out_channels=embedding_dimension, metadata=(meta_node, meta_edge))
 
         self.classify_layer = nn.Sequential(
             nn.Linear(embedding_dimension, embedding_dimension),
@@ -82,6 +83,7 @@ class HGTDetector(nn.Module):
         }
 
         x_dict = self.HGT_layer1(x_dict, edge_index_dict)
+        x_dict = self.HGT_layer2(x_dict, edge_index_dict)
 
         out = self.classify_layer(x_dict["user"])
 
