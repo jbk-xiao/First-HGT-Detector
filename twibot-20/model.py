@@ -72,7 +72,7 @@ class HGTDetector(nn.Module):
             nn.Linear(embedding_dimension, embedding_dimension),
             nn.LeakyReLU(),
             nn.Linear(embedding_dimension, 2),
-            nn.Softmax()
+            nn.Softmax(dim=1)
         )
 
     def forward(self, x_dict, edge_index_dict):
