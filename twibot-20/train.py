@@ -8,7 +8,7 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 from model import HGTDetector
 from build_hetero_data import build_hetero_data
 
-device = "cuda:0"
+device = "cpu"
 
 model = HGTDetector(n_cat_prop=4, n_num_prop=5, des_size=768, tweet_size=768, embedding_dimension=128).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
@@ -105,10 +105,11 @@ def test(test_data):
     recall = recall_score(label, out)
 
     print(f"Test, accuracy: {accuracy:.4f}, f1: {f1:.4f}, precision: {precision:.4f}, recall: {recall:.4f}")
+    torch.save(model, rf'./saved_models/acc{accuracy:.4f}.pickle')
 
 
 init_params()
-for epoch in range(1, 2):
+for epoch in range(1, 21):
     loss = train()
     val_acc = val(val_loader)
     print(f'Epoch: {epoch:02d}, Loss: {loss:.4f}, Val: {val_acc:.4f}')
