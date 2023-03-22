@@ -33,9 +33,9 @@ val_loader = NeighborLoader(
 test_data = data.subgraph(
     {
         'user': data['user'].test_mask,
-        'tweet': torch.tensor(range(data['tweet'].num_nodes)).long()
+        'tweet': data['tweet'].test_mask
     }
-)
+).to("cuda:0")
 
 print(f"{datetime.now()}----Data loaded.")
 
@@ -95,6 +95,7 @@ def val(loader):
 
 @torch.no_grad()
 def test(test_data):
+    model.to("cuda:0")
     model.eval()
 
     out = model(test_data.x_dict, test_data.edge_index_dict).argmax(dim=-1)
