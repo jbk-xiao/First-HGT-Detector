@@ -42,6 +42,10 @@ def build_hetero_data() -> HeteroData:
     test_index = test_index.bool()
 
     test_tweet_idx = torch.load(rf"{tmp_files_root}/test_tweets_id.pt")
+    test_tweet_mask = torch.zeros(tweet.size())
+    test_tweet_mask[test_tweet_idx] = 1
+    test_tweet_mask = test_tweet_mask.bool()
+
     print(f"{datetime.now()}----Building data...")
     data = HeteroData(
         {
@@ -54,7 +58,7 @@ def build_hetero_data() -> HeteroData:
             },
             'tweet': {
                 'x': tweet,
-                'test_mask': test_tweet_idx
+                'test_mask': test_tweet_mask
             }
         },
         user__follow__user={'edge_index': follow},
