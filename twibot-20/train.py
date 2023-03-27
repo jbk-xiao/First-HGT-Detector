@@ -55,17 +55,17 @@ def train():
         optimizer.zero_grad()
         batch = batch.to(device, 'edge_index')
         # batch_size = batch['user'].batch_size
-        # mask = batch['user'].train_mask
-        out = model(batch.x_dict, batch.edge_index_dict)
+        mask = batch['user'].train_mask
+        out = model(batch.x_dict, batch.edge_index_dict)[mask]
         # print(f"out[mask]: {out}")
         # print(f"out[mask].argmax(-1): {out.argmax(dim=-1)}")
         # print(f"batch['user'].y[mask]: {batch['user'].y[mask]}")
-        loss = nn.functional.cross_entropy(out, batch['user'].y.long())
+        loss = nn.functional.cross_entropy(out, batch['user'].y[mask].long())
         loss.backward()
         optimizer.step()
 
-        total_examples += len(out)
-        total_loss += float(loss) * len(out)
+        total_examples += mask.sum()
+        total_loss += float(loss) * mask.sum()
 
     return total_loss / total_examples
 
@@ -78,17 +78,17 @@ def val(loader):
     for batch in tqdm(loader):
         batch = batch.to(device, 'edge_index')
         # batch_size = batch['user'].batch_size
-        # mask = batch['user'].val_mask
+        mask = batch['user'].val_mask
         out = model(batch.x_dict, batch.edge_index_dict)
-        pred = out.argmax(dim=-1)
+        pred = out.argmax(dim=-1)[mask]
         # print(f"batch_size: {batch_size}")
         # print(f"mask: {mask}")
         # print(f"pred: {pred}")
         # print(f"pred[mask]: {pred[mask]}")
         # print(f"batch['user'].y: {batch['user'].y}")
         # print(f"batch['user'].y[mask]: {batch['user'].y[mask]}")
-        total_examples += len(out)
-        total_correct += int((pred == batch['user'].y).sum())
+        total_examples += mask.sum()
+        total_correct += int((pred == batch['user'].y[mask]).sum())
 
     return total_correct / total_examples
 
