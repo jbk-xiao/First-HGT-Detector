@@ -42,7 +42,7 @@ def build_hetero_data() -> HeteroData:
     test_index = test_index.bool()
 
     test_tweet_idx = torch.load(rf"{tmp_files_root}/test_tweets_id.pt")
-    test_tweet_mask = torch.zeros(tweet.size())
+    test_tweet_mask = torch.zeros(tweet.size(dim=0))
     test_tweet_mask[test_tweet_idx] = 1
     test_tweet_mask = test_tweet_mask.bool()
 

@@ -1,3 +1,5 @@
+import copy
+
 import torch
 from torch import nn
 from torch_geometric.loader import NeighborLoader
@@ -109,9 +111,18 @@ def test(test_data):
 
 
 init_params()
+best_val_acc = 0.0
+best_epoch = 0
+best_model = ''
 for epoch in range(1, 21):
     loss = train()
     val_acc = val(val_loader)
-    print(f'Epoch: {epoch:02d}, Loss: {loss:.4f}, Val: {val_acc:.4f}')
+    if val_acc > best_val_acc:
+        best_val_acc = val_acc
+        best_epoch = epoch
+        best_model = copy.deepcopy(model.state_dict())
+    print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Val: {val_acc:.4f}')
+print(f'Best val acc is: {best_val_acc:.4f}, in epoch: {best_epoch:03d}.')
+model = HGTDetector.load_state_dict(best_model)
 test(test_data)
 
