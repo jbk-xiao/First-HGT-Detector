@@ -38,6 +38,13 @@ test_data = data.subgraph(
         'tweet': data['tweet'].test_mask
     }
 ).to(device)
+data = data.subgraph(
+    {
+        'user': ~data['user'].test_mask,
+        'tweet': ~data['tweet'].test_mask
+    }
+)
+
 
 print(f"{datetime.now()}----Data loaded.")
 
@@ -123,6 +130,6 @@ for epoch in range(1, 21):
         best_model = copy.deepcopy(model.state_dict())
     print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Val: {val_acc:.4f}')
 print(f'Best val acc is: {best_val_acc:.4f}, in epoch: {best_epoch:03d}.')
-model = HGTDetector.load_state_dict(best_model)
+model.load_state_dict(best_model)
 test(test_data)
 
