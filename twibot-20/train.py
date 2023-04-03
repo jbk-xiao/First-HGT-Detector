@@ -10,13 +10,13 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 from model import HGTDetector
 from build_hetero_data import build_hetero_data
 
-device = "cpu"
+device = "cuda:0"
 
 model = HGTDetector(n_cat_prop=4, n_num_prop=5, des_size=768, tweet_size=768, embedding_dimension=128).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 print(f"{datetime.now()}----Loading data...")
-data = build_hetero_data().to(device, 'x', 'y')
+data = build_hetero_data()
 
 train_loader = NeighborLoader(
     data,
@@ -37,7 +37,7 @@ test_data = data.subgraph(
         'user': data['user'].test_mask,
         'tweet': data['tweet'].test_mask
     }
-).to(device)
+)
 data = data.subgraph(
     {
         'user': ~data['user'].test_mask,
@@ -52,7 +52,7 @@ print(f"{datetime.now()}----Data loaded.")
 @torch.no_grad()
 def init_params():
     batch = next(iter(train_loader))
-    batch = batch.to(device, "edge_index")
+    batch = batch.to(device)
     model(batch.x_dict, batch.edge_index_dict)
 
 
@@ -62,7 +62,7 @@ def train():
     total_examples = total_loss = 0
     for batch in tqdm(train_loader):
         optimizer.zero_grad()
-        batch = batch.to(device, 'edge_index')
+        batch = batch.to(device)
         # batch_size = batch['user'].batch_size
         mask = batch['user'].train_mask
         out = model(batch.x_dict, batch.edge_index_dict)[mask]
@@ -85,7 +85,7 @@ def val(loader):
 
     total_examples = total_correct = 0
     for batch in tqdm(loader):
-        batch = batch.to(device, 'edge_index')
+        batch = batch.to(device)
         # batch_size = batch['user'].batch_size
         mask = batch['user'].val_mask
         out = model(batch.x_dict, batch.edge_index_dict)
@@ -105,9 +105,11 @@ def val(loader):
 @torch.no_grad()
 def test(test_data):
     model.eval()
-
+    test_data.to(device)
     out = model(test_data.x_dict, test_data.edge_index_dict).argmax(dim=-1)
+    out = out.cpu()
     label = test_data['user'].y
+    label = label.cpu()
     accuracy = accuracy_score(label, out)
     f1 = f1_score(label, out)
     precision = precision_score(label, out)
