@@ -31,14 +31,15 @@ class PropertyVector(nn.Module):
             nn.Linear(embedding_dimension, embedding_dimension),
             nn.LeakyReLU()
         )
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, user_tensor):
         cat_prop, num_prop, des = torch.split_with_sizes(user_tensor, [self.n_cat_prop, self.n_num_prop, self.des_size], dim=1)
-        cat_prop_vec = self.cat_prop_module(cat_prop)
-        num_prop_vec = self.num_prop_module(num_prop)
-        des_vec = self.des_module(des)
+        cat_prop_vec = self.dropout(self.cat_prop_module(cat_prop))
+        num_prop_vec = self.dropout(self.num_prop_module(num_prop))
+        des_vec = self.dropout(self.des_module(des))
         prop_vec = torch.concat((cat_prop_vec, num_prop_vec, des_vec), dim=1)
-        prop_vec = self.out_layer(prop_vec)
+        prop_vec = self.dropout(self.out_layer(prop_vec))
         return prop_vec
 
 
@@ -49,9 +50,10 @@ class TweetVector(nn.Module):
             nn.Linear(tweet_size, embedding_dimension),
             nn.LeakyReLU()
         )
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, tweet_tensor):
-        tweet_vec = self.tweet_module(tweet_tensor)
+        tweet_vec = self.dropout(self.tweet_module(tweet_tensor))
         return tweet_vec
 
 
@@ -76,14 +78,16 @@ class HGTDetector(nn.Module):
             nn.Softmax(dim=1)
         )
 
+        self.dropout = nn.Dropout(dropout)
+
     def forward(self, x_dict, edge_index_dict):
         x_dict = {
             node_type: self.module_dict[node_type](x)
             for node_type, x in x_dict.items()
         }
 
-        x_dict = self.HGT_layer1(x_dict, edge_index_dict)
-        x_dict = self.HGT_layer2(x_dict, edge_index_dict)
+        x_dict = self.dropout(self.HGT_layer1(x_dict, edge_index_dict))
+        x_dict = self.dropout(self.HGT_layer2(x_dict, edge_index_dict))
 
         out = self.classify_layer(x_dict["user"])
 

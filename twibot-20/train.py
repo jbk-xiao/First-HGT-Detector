@@ -12,7 +12,7 @@ from build_hetero_data import build_hetero_data
 
 device = "cuda:0"
 
-model = HGTDetector(n_cat_prop=4, n_num_prop=5, des_size=768, tweet_size=768, embedding_dimension=128).to(device)
+model = HGTDetector(n_cat_prop=4, n_num_prop=5, des_size=768, tweet_size=768, embedding_dimension=128, dropout=0.3).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 print(f"{datetime.now()}----Loading data...")
@@ -59,24 +59,26 @@ def init_params():
 def train():
     model.train()
 
-    total_examples = total_loss = 0
+    total_examples = total_correct = total_loss = 0
     for batch in tqdm(train_loader):
         optimizer.zero_grad()
         batch = batch.to(device)
         # batch_size = batch['user'].batch_size
         mask = batch['user'].train_mask
         out = model(batch.x_dict, batch.edge_index_dict)[mask]
+        pred = out.argmax(dim=-1)
+        total_correct += int((pred == batch['user'].y[mask]).sum())
         # print(f"out[mask]: {out}")
         # print(f"out[mask].argmax(-1): {out.argmax(dim=-1)}")
         # print(f"batch['user'].y[mask]: {batch['user'].y[mask]}")
-        loss = nn.functional.cross_entropy(out, batch['user'].y[mask].long())
+        loss = nn.functional.cross_entropy(out, batch['user'].y[mask])
         loss.backward()
         optimizer.step()
 
         total_examples += mask.sum()
         total_loss += float(loss) * mask.sum()
 
-    return total_loss / total_examples
+    return (total_correct / total_examples), (total_loss / total_examples)
 
 
 @torch.no_grad()
@@ -124,13 +126,13 @@ best_val_acc = 0.0
 best_epoch = 0
 best_model = ''
 for epoch in range(1, 21):
-    loss = train()
+    train_acc, loss = train()
     val_acc = val(val_loader)
     if val_acc > best_val_acc:
         best_val_acc = val_acc
         best_epoch = epoch
         best_model = copy.deepcopy(model.state_dict())
-    print(f'Epoch: {epoch:03d}, Loss: {loss:.4f}, Val: {val_acc:.4f}')
+    print(f'Epoch: {epoch:03d}, Train_Acc: {train_acc:.4f}, Loss: {loss:.4f}, Val: {val_acc:.4f}')
 print(f'Best val acc is: {best_val_acc:.4f}, in epoch: {best_epoch:03d}.')
 model.load_state_dict(best_model)
 test(test_data)
