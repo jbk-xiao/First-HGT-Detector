@@ -86,10 +86,10 @@ class HGTDetector(nn.Module):
             for node_type, x in x_dict.items()
         }
 
-        x_dict = self.dropout(self.HGT_layer1(x_dict, edge_index_dict))
-        x_dict = self.dropout(self.HGT_layer2(x_dict, edge_index_dict))
+        x_dict = self.HGT_layer1(x_dict, edge_index_dict)
+        x_dict = self.HGT_layer2(x_dict, edge_index_dict)
 
-        out = self.classify_layer(x_dict["user"])
+        out = self.dropout(self.classify_layer(x_dict["user"]))
 
         return out
 
