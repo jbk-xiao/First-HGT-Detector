@@ -35,14 +35,14 @@ data = data.subgraph(
 if is_hgt_loader:
     train_loader = HGTLoader(
         data,
-        num_samples={key: [-1] for key in data.edge_types},
+        num_samples={key: [512] for key in data.node_types},
         shuffle=True,
         input_nodes=('user', data['user'].train_mask),
         batch_size=512,
         num_workers=0)
     val_loader = HGTLoader(
         data,
-        num_samples={key: [-1] for key in data.edge_types},
+        num_samples={key: [512] for key in data.node_types},
         shuffle=True,
         input_nodes=('user', data['user'].val_mask),
         batch_size=128,
