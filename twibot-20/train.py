@@ -13,10 +13,24 @@ from build_hetero_data import build_hetero_data
 device = "cuda:0"
 
 model = HGTDetector(n_cat_prop=4, n_num_prop=5, des_size=768, tweet_size=768, embedding_dimension=128, dropout=0.3).to(device)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+optimizer = torch.optim.AdamW(model.parameters(), lr=0.001)
 
 print(f"{datetime.now()}----Loading data...")
 data = build_hetero_data()
+
+test_data = data.subgraph(
+    {
+        'user': data['user'].test_mask,
+        'tweet': data['tweet'].test_mask
+    }
+)
+
+data = data.subgraph(
+    {
+        'user': ~data['user'].test_mask,
+        'tweet': ~data['tweet'].test_mask
+    }
+)
 
 train_loader = NeighborLoader(
     data,
@@ -32,18 +46,6 @@ val_loader = NeighborLoader(
     input_nodes=('user', data['user'].val_mask),
     batch_size=128,
     num_workers=0)
-test_data = data.subgraph(
-    {
-        'user': data['user'].test_mask,
-        'tweet': data['tweet'].test_mask
-    }
-)
-data = data.subgraph(
-    {
-        'user': ~data['user'].test_mask,
-        'tweet': ~data['tweet'].test_mask
-    }
-)
 
 
 print(f"{datetime.now()}----Data loaded.")
@@ -65,6 +67,7 @@ def train():
         batch = batch.to(device)
         # batch_size = batch['user'].batch_size
         mask = batch['user'].train_mask
+        mask[:] = True
         out = model(batch.x_dict, batch.edge_index_dict)[mask]
         pred = out.argmax(dim=-1)
         total_correct += int((pred == batch['user'].y[mask]).sum())
