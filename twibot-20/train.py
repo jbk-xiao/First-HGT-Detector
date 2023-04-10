@@ -2,7 +2,7 @@ import copy
 
 import torch
 from torch import nn
-from torch_geometric.loader import NeighborLoader
+from torch_geometric.loader import NeighborLoader, HGTLoader
 from tqdm import tqdm
 from datetime import datetime
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
@@ -11,8 +11,9 @@ from model import HGTDetector
 from build_hetero_data import build_hetero_data
 
 device = "cuda:0"
+is_hgt_loader = True
 
-model = HGTDetector(n_cat_prop=4, n_num_prop=5, des_size=768, tweet_size=768, embedding_dimension=128, dropout=0.3).to(device)
+model = HGTDetector(n_cat_prop=4, n_num_prop=5, des_size=768, tweet_size=768, embedding_dimension=256, dropout=0.3).to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=0.001)
 
 print(f"{datetime.now()}----Loading data...")
@@ -31,21 +32,36 @@ data = data.subgraph(
         'tweet': ~data['tweet'].test_mask
     }
 )
-
-train_loader = NeighborLoader(
-    data,
-    num_neighbors={key: [-1] for key in data.edge_types},
-    shuffle=True,
-    input_nodes=('user', data['user'].train_mask),
-    batch_size=128,
-    num_workers=0)
-val_loader = NeighborLoader(
-    data,
-    num_neighbors={key: [-1] for key in data.edge_types},
-    shuffle=True,
-    input_nodes=('user', data['user'].val_mask),
-    batch_size=128,
-    num_workers=0)
+if is_hgt_loader:
+    train_loader = HGTLoader(
+        data,
+        num_samples={key: [-1] for key in data.edge_types},
+        shuffle=True,
+        input_nodes=('user', data['user'].train_mask),
+        batch_size=512,
+        num_workers=0)
+    val_loader = HGTLoader(
+        data,
+        num_samples={key: [-1] for key in data.edge_types},
+        shuffle=True,
+        input_nodes=('user', data['user'].val_mask),
+        batch_size=128,
+        num_workers=0)
+else:
+    train_loader = NeighborLoader(
+        data,
+        num_neighbors={key: [-1] for key in data.edge_types},
+        shuffle=True,
+        input_nodes=('user', data['user'].train_mask),
+        batch_size=512,
+        num_workers=0)
+    val_loader = NeighborLoader(
+        data,
+        num_neighbors={key: [-1] for key in data.edge_types},
+        shuffle=True,
+        input_nodes=('user', data['user'].val_mask),
+        batch_size=128,
+        num_workers=0)
 
 
 print(f"{datetime.now()}----Data loaded.")
@@ -67,7 +83,7 @@ def train():
         batch = batch.to(device)
         # batch_size = batch['user'].batch_size
         mask = batch['user'].train_mask
-        mask[:] = True
+        # mask[:] = True
         out = model(batch.x_dict, batch.edge_index_dict)[mask]
         pred = out.argmax(dim=-1)
         total_correct += int((pred == batch['user'].y[mask]).sum())
