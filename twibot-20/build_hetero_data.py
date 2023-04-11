@@ -17,12 +17,14 @@ def build_hetero_data() -> HeteroData:
     des = torch.load(rf"{tmp_files_root}/des_tensor.pt")
     user_profiles = torch.concat([cat_props, num_props, des], dim=1)
     size_samples = user_profiles.size(dim=0)  # int
+    consistency_props = torch.zeros([size_samples, 16])
+    user_profiles = torch.concat([user_profiles, consistency_props], dim=1)
 
     print(f"{datetime.now()}----Loading label...")
     label = torch.load(rf"{tmp_files_root}/label_tensor.pt")
-    label_tensor = torch.zeros(size_samples) * (-1)
+    label_tensor = torch.ones(size_samples) * (-1)
     label_tensor[0:len(label)] = label
-    label = label_tensor
+    label = label_tensor.long()
 
     print(f"{datetime.now()}----Loading tweet...")
     tweet = torch.load(rf"{tmp_files_root}/tweet_tensor.pt")
