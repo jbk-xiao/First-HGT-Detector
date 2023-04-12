@@ -4,7 +4,8 @@ from torch_geometric.nn import HGTConv
 
 
 class PropertyVector(nn.Module):
-    def __init__(self, n_cat_prop=4, n_num_prop=5, des_size=768, embedding_dimension=128, fixed_size=4, dropout=0.3):
+    def __init__(self, n_cat_prop=4, n_num_prop=5, des_size=768, embedding_dimension=128, fixed_size=4,
+                 layer_norm_eps=1e-5, dropout=0.3):
         super(PropertyVector, self).__init__()
 
         self.n_cat_prop = n_cat_prop
@@ -14,10 +15,12 @@ class PropertyVector(nn.Module):
 
         self.cat_prop_module = nn.Sequential(
             nn.Linear(n_cat_prop, int(embedding_dimension / 4)),
+            nn.LayerNorm(int(embedding_dimension / 4), eps=layer_norm_eps),
             nn.LeakyReLU()
         )
         self.num_prop_module = nn.Sequential(
             nn.Linear(n_num_prop, int(embedding_dimension / 4)),
+            nn.LayerNorm(int(embedding_dimension / 4), eps=layer_norm_eps),
             nn.LeakyReLU()
         )
         # self.prop_module = nn.Sequential(
@@ -26,13 +29,16 @@ class PropertyVector(nn.Module):
         # )
         self.des_module = nn.Sequential(
             nn.Linear(des_size, int(embedding_dimension / 4)),
+            nn.LayerNorm(int(embedding_dimension / 4), eps=layer_norm_eps),
             nn.LeakyReLU()
         )
         self.consistency_module = nn.Sequential(
             nn.Linear(fixed_size * fixed_size, int(embedding_dimension / 4)),
+            nn.LayerNorm(int(embedding_dimension / 4), eps=layer_norm_eps),
             nn.LeakyReLU()
         )
         self.out_layer = nn.Sequential(
+            nn.LayerNorm(embedding_dimension, eps=layer_norm_eps),
             nn.Linear(embedding_dimension, embedding_dimension),
             nn.LeakyReLU()
         )
@@ -76,7 +82,7 @@ class SemanticConsistency(nn.Module):
 
     def fixed_matrix(self, attention_weight):
         w, h = attention_weight.shape
-        if w < self.fixed_size or h < self.fixed_size:
+        if w <= self.fixed_size or h <= self.fixed_size:
             p_h = self.fixed_size - h
             p_w = self.fixed_size - w
             attention_weight = nn.functional.pad(attention_weight, (0, p_h, 0, p_w))
@@ -85,9 +91,10 @@ class SemanticConsistency(nn.Module):
             p_w = self.fixed_size * ((w + self.fixed_size - 1) // self.fixed_size) - w
             attention_weight = nn.functional.pad(attention_weight, (0, p_h, 0, p_w))
             kernel_size = (
-            ((w + self.fixed_size - 1) // self.fixed_size), ((h + self.fixed_size - 1) // self.fixed_size))
+                ((w + self.fixed_size - 1) // self.fixed_size), ((h + self.fixed_size - 1) // self.fixed_size)
+            )
             pool = nn.MaxPool2d(kernel_size, stride=kernel_size)
-            attention_weight = pool(attention_weight)
+            attention_weight = torch.squeeze(pool(torch.unsqueeze(attention_weight, 0)))
         return attention_weight
 
 
@@ -120,8 +127,10 @@ class HGTDetector(nn.Module):
         self.fixed_size = fixed_size
 
         self.module_dict = nn.ModuleDict()
-        self.module_dict["user"] = PropertyVector(n_cat_prop, n_num_prop, des_size, embedding_dimension, fixed_size,
-                                                  dropout)
+        self.module_dict["user"] = PropertyVector(
+            n_cat_prop=n_cat_prop, n_num_prop=n_num_prop, des_size=des_size, embedding_dimension=embedding_dimension,
+            fixed_size=fixed_size, layer_norm_eps=layer_norm_eps, dropout=dropout
+        )
         self.module_dict["tweet"] = TweetVector(tweet_size, embedding_dimension, dropout)
 
         self.semantic_consistency = SemanticConsistency(tweet_size=tweet_size, num_heads=num_heads,
@@ -146,7 +155,7 @@ class HGTDetector(nn.Module):
         user_text_dict = {}
         for user_idx in range(len(x_dict["user"])):
             user_text_dict[user_idx] = []
-        for user_idx, tweet_idx in torch.transpose(edge_index_dict[("user", "post", "tweet")], dim0=0, dim1=1).tolist():
+        for tweet_idx, user_idx in torch.transpose(edge_index_dict[("tweet", "rev_post", "user")], dim0=0, dim1=1).tolist():
             user_text_dict[user_idx].append(tweet_idx)
         for user_idx, tweet_idxs in user_text_dict.items():
             text, consistency = self.semantic_consistency(x_dict["tweet"][tweet_idxs])
