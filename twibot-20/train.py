@@ -52,6 +52,13 @@ if is_hgt_loader:
         input_nodes=('user', data['user'].val_mask),
         batch_size=128,
         num_workers=0)
+    test_loader = HGTLoader(
+        test_data,
+        num_samples={key: [512] for key in test_data.node_types},
+        shuffle=True,
+        input_nodes=('user', test_data['user'].test_mask),
+        batch_size=1,
+        num_workers=0)
 else:
     train_loader = NeighborLoader(
         data,
@@ -67,6 +74,13 @@ else:
         input_nodes=('user', data['user'].val_mask),
         batch_size=128,
         num_workers=0)
+    test_loader = NeighborLoader(
+        test_data,
+        num_neighbors={key: [-1] for key in test_data.edge_types},
+        shuffle=True,
+        input_nodes=('user', test_data['user'].test_mask),
+        batch_size=1,
+        num_workers=0)
 
 
 print(f"{datetime.now()}----Data loaded.")
@@ -81,7 +95,7 @@ def init_params():
 
 def train(lr):
     model.train()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, weight_decay=1e-5)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, weight_decay=lr)
     total_examples = total_correct = total_loss = 0
     for batch in tqdm(train_loader):
         optimizer.zero_grad()
@@ -97,14 +111,14 @@ def train(lr):
         # batch_size = batch['user'].batch_size
         train_mask = batch['user'].train_mask
         out = model(batch.x_dict, batch.edge_index_dict)[train_mask]
-        pred = out.argmax(dim=-1)
-        total_correct += int((pred == batch['user'].y[train_mask]).sum())
         # print(f"out[train_mask]: {out}")
         # print(f"out[train_mask].argmax(-1): {out.argmax(dim=-1)}")
         # print(f"batch['user'].y[train_mask]: {batch['user'].y[train_mask]}")
         loss = nn.functional.cross_entropy(out, batch['user'].y[train_mask])
         loss.backward()
         optimizer.step()
+        pred = out.argmax(dim=-1)
+        total_correct += int((pred == batch['user'].y[train_mask]).sum())
 
         total_examples += train_mask.sum()
         total_loss += float(loss) * train_mask.sum()
@@ -113,16 +127,15 @@ def train(lr):
 
 
 @torch.no_grad()
-def val(loader):
+def val(val_loader):
     model.eval()
 
     total_examples = total_correct = total_loss = 0
-    for batch in tqdm(loader):
+    for batch in tqdm(val_loader):
         batch = batch.to(device)
         # batch_size = batch['user'].batch_size
         val_mask = batch['user'].val_mask
         out = model(batch.x_dict, batch.edge_index_dict)[val_mask]
-        pred = out.argmax(dim=-1)
         loss = nn.functional.cross_entropy(out, batch['user'].y[val_mask])
         # print(f"batch_size: {batch_size}")
         # print(f"val_mask: {val_mask}")
@@ -131,6 +144,7 @@ def val(loader):
         # print(f"batch['user'].y: {batch['user'].y}")
         # print(f"batch['user'].y[val_mask]: {batch['user'].y[val_mask]}")
         total_examples += val_mask.sum()
+        pred = out.argmax(dim=-1)
         total_correct += int((pred == batch['user'].y[val_mask]).sum())
         total_loss += loss
 
@@ -138,13 +152,20 @@ def val(loader):
 
 
 @torch.no_grad()
-def test(test_data):
+def test(test_loader):
     model.eval()
-    test_data.to(device)
-    out = model(test_data.x_dict, test_data.edge_index_dict).argmax(dim=-1)
-    out = out.cpu()
-    label = test_data['user'].y
-    label = label.cpu()
+
+    label = []
+    out = []
+    for batch in tqdm(test_loader):
+        batch = batch.to(device)
+        # batch_size = batch['user'].batch_size
+        train_mask = batch['user'].train_mask
+        pred = model(batch.x_dict, batch.edge_index_dict)[train_mask]
+        pred = pred.argmax(dim=-1)
+        out.append(int(pred[0]))
+        label.append(int(batch['user'].y[train_mask][0]))
+
     accuracy = accuracy_score(label, out)
     f1 = f1_score(label, out)
     precision = precision_score(label, out)
@@ -162,6 +183,7 @@ lr = 0.001
 for epoch in range(1, 21):
     if epoch >= 50 and epoch % 50 == 0:
         lr = 0.1 * lr
+        print(f"{datetime.now()}----Current lr: {lr}.")
     train_acc, loss = train(lr)
     val_acc, val_loss = val(val_loader)
     if val_acc > best_val_acc:
@@ -171,5 +193,5 @@ for epoch in range(1, 21):
     print(f'Epoch: {epoch:03d}, Train_Acc: {train_acc:.4f}, Loss: {loss:.4f}, Val: {val_acc:.4f}, Val_loss: {val_loss:.4f}')
 print(f'Best val acc is: {best_val_acc:.4f}, in epoch: {best_epoch:03d}.')
 model.load_state_dict(best_model)
-test(test_data)
+test(test_loader)
 
