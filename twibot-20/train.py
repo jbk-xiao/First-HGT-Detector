@@ -160,18 +160,18 @@ def test(test_loader):
     for batch in tqdm(test_loader):
         batch = batch.to(device)
         # batch_size = batch['user'].batch_size
-        train_mask = batch['user'].train_mask
-        pred = model(batch.x_dict, batch.edge_index_dict)[train_mask]
+        test_mask = batch['user'].test_mask
+        pred = model(batch.x_dict, batch.edge_index_dict)[test_mask]
         pred = pred.argmax(dim=-1)
         out.append(int(pred[0]))
-        label.append(int(batch['user'].y[train_mask][0]))
+        label.append(int(batch['user'].y[test_mask][0]))
 
     accuracy = accuracy_score(label, out)
     f1 = f1_score(label, out)
     precision = precision_score(label, out)
     recall = recall_score(label, out)
 
-    print(f"Test, accuracy: {accuracy:.4f}, f1: {f1:.4f}, precision: {precision:.4f}, recall: {recall:.4f}")
+    print(f"Test: accuracy: {accuracy:.4f}, f1: {f1:.4f}, precision: {precision:.4f}, recall: {recall:.4f}")
     torch.save(model, rf'./saved_models/acc{accuracy:.4f}.pickle')
 
 

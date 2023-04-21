@@ -22,9 +22,10 @@ def build_hetero_data(remove_profiles=True, fixed_size=4) -> HeteroData:
 
     print(f"{datetime.now()}----Loading label...")
     label = torch.load(rf"{tmp_files_root}/label_tensor.pt")
-    label_tensor = torch.zeros(size_samples) * (-1)
+    label_tensor = torch.ones(size_samples) * (-1)
     label_tensor[0:len(label)] = label
-    label = label_tensor
+    label = label_tensor.long()
+    del label_tensor
 
     print(f"{datetime.now()}----Loading tweet...")
     tweet = torch.load(rf"{tmp_files_root}/tweet_tensor.pt")
