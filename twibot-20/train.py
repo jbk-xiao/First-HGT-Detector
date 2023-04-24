@@ -9,7 +9,7 @@ from datetime import datetime
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 
 from model import HGTDetector
-from build_hetero_data import build_hetero_data
+from build_hetero_data_with_sequence import build_hetero_data
 
 device = "cuda:0"
 is_hgt_loader = False
@@ -22,7 +22,7 @@ model = HGTDetector(n_cat_prop=4, n_num_prop=5, des_size=768, tweet_size=768,
 
 
 print(f"{datetime.now()}----Loading data...")
-data = build_hetero_data(remove_profiles=remove_profiles, fixed_size=fixed_size)
+data, word_vec, _ = build_hetero_data(remove_profiles=remove_profiles, fixed_size=fixed_size)
 
 test_data = data.subgraph(
     {
@@ -146,7 +146,7 @@ def val(val_loader):
         total_examples += val_mask.sum()
         pred = out.argmax(dim=-1)
         total_correct += int((pred == batch['user'].y[val_mask]).sum())
-        total_loss += loss
+        total_loss += float(loss) * val_mask.sum()
 
     return (total_correct / total_examples), (total_loss / total_examples)
 
