@@ -1,7 +1,8 @@
 import torch
 from torch import nn
+from torch_geometric.data import HeteroData
 from torch_geometric.nn import HGTConv
-
+from textual_drl_model import AdversarialVAE
 
 class PropertyVector(nn.Module):
     def __init__(self, n_cat_prop=4, n_num_prop=5, des_size=768, embedding_dimension=128, dropout=0.3):
@@ -58,7 +59,7 @@ class TweetVector(nn.Module):
 
 
 class HGTDetector(nn.Module):
-    def __init__(self, n_cat_prop=4, n_num_prop=5, des_size=768, tweet_size=768, embedding_dimension=128, dropout=0.3):
+    def __init__(self, n_cat_prop=4, n_num_prop=5, des_size=768, tweet_size=768, embedding_dimension=128, word_vec=None, dropout=0.3):
         super(HGTDetector, self).__init__()
 
         meta_node = ["user", "tweet"]
@@ -69,10 +70,10 @@ class HGTDetector(nn.Module):
             ("tweet", "rev_post", "user")
         ]
 
-        self.module_dict = nn.ModuleDict()
-        self.module_dict["user"] = PropertyVector(n_cat_prop, n_num_prop, des_size, embedding_dimension, dropout)
-        self.module_dict["tweet"] = TweetVector(tweet_size, embedding_dimension, dropout)
-
+        # self.module_dict = nn.ModuleDict()
+        self.user_encoder = PropertyVector(n_cat_prop, n_num_prop, des_size, embedding_dimension, dropout)
+        # self.module_dict["tweet"] = TweetVector(tweet_size, embedding_dimension, dropout)
+        self.tweet_encoder = AdversarialVAE(word_vec)
         self.HGT_layer1 = HGTConv(in_channels=embedding_dimension, out_channels=embedding_dimension,
                                   metadata=(meta_node, meta_edge), dropout=dropout)
         self.HGT_layer2 = HGTConv(in_channels=embedding_dimension, out_channels=embedding_dimension,
@@ -87,16 +88,37 @@ class HGTDetector(nn.Module):
 
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x_dict, edge_index_dict):
-        x_dict = {
-            node_type: self.module_dict[node_type](x)
-            for node_type, x in x_dict.items()
-        }
-
-        x_dict = self.HGT_layer1(x_dict, edge_index_dict)
-        x_dict = self.HGT_layer2(x_dict, edge_index_dict)
-
+    def forward(self, data: HeteroData, iteration):
+        x_dict = {"user": self.user_encoder(data["user"]["x"])}
+        content_disc_loss, style_disc_loss, vae_and_classifier_loss, x_dict["tweet"] = self.tweet_encoder(
+            data["tweet"]["sequence"],
+            data["tweet"]["seq_length"],
+            data["tweet"]["style_label"],
+            data["tweet"]["content_bow"],
+            iteration
+        )
+        x_dict = self.HGT_layer1(x_dict, data.edge_index_dict)
+        x_dict = self.HGT_layer2(x_dict, data.edge_index_dict)
         out = self.dropout(self.classify_layer(x_dict["user"]))
 
-        return out
+        return content_disc_loss, style_disc_loss, vae_and_classifier_loss, out
 
+    # def forward(self, x_dict, edge_index_dict):
+    #     x_dict = {
+    #         node_type: self.module_dict[node_type](x)
+    #         for node_type, x in x_dict.items()
+    #     }
+    #
+    #     x_dict = self.HGT_layer1(x_dict, edge_index_dict)
+    #     x_dict = self.HGT_layer2(x_dict, edge_index_dict)
+    #
+    #     out = self.dropout(self.classify_layer(x_dict["user"]))
+    #
+    #     return out
+
+    def get_params(self):
+        content_disc_params, style_disc_params, vae_and_classifiers_params = self.tweet_encoder.get_params()
+        hgt_and_classification_params = \
+            list(self.user_encoder.parameters()) + list(self.HGT_layer1.parameters())\
+            + list(self.HGT_layer2.parameters()) + list(self.classify_layer.parameters())
+        return content_disc_params, style_disc_params, vae_and_classifiers_params, hgt_and_classification_params

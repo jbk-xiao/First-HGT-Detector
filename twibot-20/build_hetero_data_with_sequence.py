@@ -1,9 +1,7 @@
-from typing import Tuple, Any, Iterable
-
 import torch
 from numpy import ndarray
 from torch import Tensor
-from torch_geometric.data import HeteroData, Data
+from torch_geometric.data import HeteroData
 from torch_geometric.transforms import ToUndirected
 
 import numpy as np
@@ -13,7 +11,7 @@ from datetime import datetime
 from tqdm import tqdm
 
 
-def build_hetero_data(remove_profiles=True, fixed_size=4) -> tuple[Data | HeteroData, Tensor, Any]:
+def build_hetero_data(remove_profiles=True, fixed_size=4) -> tuple[HeteroData, ndarray[list], int, Tensor, dict]:
     tmp_files_root = r"./preprocess/tmp-files"
     print(f"{datetime.now()}----Loading properties...")
     # cat_props = torch.split(torch.load(rf"{tmp_files_root}/cat_props_tensor.pt"), 11826)[0]
@@ -60,7 +58,7 @@ def build_hetero_data(remove_profiles=True, fixed_size=4) -> tuple[Data | Hetero
 
     word_vec = np.load(rf"{tmp_files_root}/vec.npy")  # 需要增加一行
     words_size = len(word_vec)
-    tweets_per_user = np.load(rf"{tmp_files_root}/tweets.npy")
+    tweets_per_user = np.load(rf"{tmp_files_root}/tweets.npy", allow_pickle=True)
     key_to_index = json.load(open(rf"{tmp_files_root}/key_to_index.json"))  # 是否有用
 
     tweet_sequences = []  # 不等长
@@ -83,18 +81,19 @@ def build_hetero_data(remove_profiles=True, fixed_size=4) -> tuple[Data | Hetero
             tweet_id += 1
         user_id += 1
 
-    pad_tweet_sequences = np.ones((tweet_id, max_len)) * words_size  # 扩充为最后一个word_vec
-
-    for i in range(tweet_id):
-        pad_tweet_sequences[i][0:seq_lengths[i]] = tweet_sequences[i]
-    del tweet_sequences
+    # pad_tweet_sequences = np.ones((tweet_id, max_len)) * words_size
+    # 以最后一个word_vec填充不等长list，内存会炸，取一个batch后再填充
+    # for i in tqdm(range(tweet_id), desc="Padding tweet_sequences..."):
+    #     pad_tweet_sequences[i][0:seq_lengths[i]] = tweet_sequences[i]
+    # del tweet_sequences
     print(f"{datetime.now()}----{tweet_id} tweets of {user_id} users loaded.")
 
     word_vec = torch.tensor(word_vec)
     blank_vec = torch.zeros((1, word_vec.shape[-1]))
     word_vec = torch.cat((word_vec, blank_vec), dim=0)
     tweet = torch.zeros([tweet_id, 128])
-    tweet_sequences = torch.tensor(pad_tweet_sequences)
+    tweet_index = torch.arange(0, tweet_id).int()
+    tweet_sequences = np.array(tweet_sequences)
     seq_lengths = torch.tensor(seq_lengths).int()
     style_labels = torch.tensor(style_labels).int()
     test_tweet_mask = torch.tensor(test_tweet_arr).bool()
@@ -113,7 +112,7 @@ def build_hetero_data(remove_profiles=True, fixed_size=4) -> tuple[Data | Hetero
             },
             'tweet': {
                 'x': tweet,
-                'sequence': tweet_sequences,
+                'tweet_index': tweet_index,
                 'seq_length': seq_lengths,
                 'style_label': style_labels,
                 'test_mask': test_tweet_mask
@@ -125,5 +124,5 @@ def build_hetero_data(remove_profiles=True, fixed_size=4) -> tuple[Data | Hetero
     )
     undirected_transform = ToUndirected(merge=True)
     data = undirected_transform(data)
-    return data, word_vec, key_to_index
+    return data, tweet_sequences, max_len, word_vec, key_to_index
 
