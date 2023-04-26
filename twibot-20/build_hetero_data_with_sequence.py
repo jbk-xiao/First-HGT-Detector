@@ -70,13 +70,15 @@ def build_hetero_data(remove_profiles=True, fixed_size=4) -> tuple[HeteroData, n
 
     user_id = tweet_id = 0
     for tweet_per_user in tqdm(tweets_per_user, desc="Loading tweets..."):
-        style_label = int(label[user_id])
+        user_label = int(label[user_id])
         for each_tweet in tweet_per_user:
             max_len = len(each_tweet) if len(each_tweet) > max_len else max_len
             tweet_sequences.append(each_tweet)
             seq_lengths.append(len(each_tweet))
+            style_label = [0, 0, 0]
+            style_label[user_label + 1] = 1
             style_labels.append(style_label)
-            test_tweet_arr.append(1 if style_label else 0)
+            test_tweet_arr.append(1 if user_label else 0)
             post_arr.append([user_id, tweet_id])
             tweet_id += 1
         user_id += 1
@@ -93,8 +95,8 @@ def build_hetero_data(remove_profiles=True, fixed_size=4) -> tuple[HeteroData, n
     word_vec = torch.cat((word_vec, blank_vec), dim=0)
     tweet = torch.zeros([tweet_id, 128])
     tweet_index = torch.arange(0, tweet_id).int()
-    tweet_sequences = np.array(tweet_sequences)
-    seq_lengths = torch.tensor(seq_lengths).int()
+    tweet_sequences = np.array(tweet_sequences, dtype=object)
+    seq_lengths = torch.tensor(seq_lengths).long()
     style_labels = torch.tensor(style_labels).int()
     test_tweet_mask = torch.tensor(test_tweet_arr).bool()
     post = torch.tensor(np.transpose(post_arr))

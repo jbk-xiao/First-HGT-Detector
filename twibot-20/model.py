@@ -1,3 +1,5 @@
+import copy
+
 import torch
 from torch import nn
 from torch_geometric.data import HeteroData
@@ -89,6 +91,7 @@ class HGTDetector(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, data: HeteroData, iteration):
+        edge_index_dict = copy.deepcopy(data.edge_index_dict)
         x_dict = {"user": self.user_encoder(data["user"]["x"])}
         content_disc_loss, style_disc_loss, vae_and_classifier_loss, x_dict["tweet"] = self.tweet_encoder(
             data["tweet"]["sequence"],
@@ -97,8 +100,8 @@ class HGTDetector(nn.Module):
             data["tweet"]["content_bow"],
             iteration
         )
-        x_dict = self.HGT_layer1(x_dict, data.edge_index_dict)
-        x_dict = self.HGT_layer2(x_dict, data.edge_index_dict)
+        x_dict = self.HGT_layer1(x_dict, edge_index_dict)
+        x_dict = self.HGT_layer2(x_dict, edge_index_dict)
         out = self.dropout(self.classify_layer(x_dict["user"]))
 
         return content_disc_loss, style_disc_loss, vae_and_classifier_loss, out

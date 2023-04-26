@@ -90,10 +90,10 @@ class AdversarialVAE(nn.Module):
         sequences = sequences[perm_index]
         embedded_seqs = self.dropout(self.embedding(sequences))
         packed_seqs = pack_padded_sequence(
-            embedded_seqs, lengths=seq_lengths, batch_first=True)
+            embedded_seqs, lengths=seq_lengths.cpu(), batch_first=True)
         packed_output, (_) = self.encoder(packed_seqs)
         output, _ = pad_packed_sequence(packed_output, batch_first=True)
-        sentence_emb = output[torch.arange(output.size(0)), seq_lengths-1]
+        sentence_emb = output[torch.arange(output.size(0)).long(), seq_lengths-1]
         # get content and style embeddings from the sentence embeddings,i.e. final_hidden_state
         content_emb_mu, content_emb_log_var = self.get_content_emb(
             sentence_emb)
@@ -422,8 +422,8 @@ class AdversarialVAE(nn.Module):
         # Training mode
         if not inference:
             # Prepend the input sentences with <sos> token
-            sos_token_tensor = torch.LongTensor(
-                [1], device=input_sentences.device).unsqueeze(0).repeat(input_sentences.shape[0], 1)
+            sos_token_tensor = torch.tensor(
+                [1], device=input_sentences.device).unsqueeze(0).repeat(input_sentences.shape[0], 1).long()
             input_sentences = torch.cat(
                 (sos_token_tensor, input_sentences), dim=1)
             sentence_embs = self.dropout(self.embedding(input_sentences))
@@ -450,7 +450,7 @@ class AdversarialVAE(nn.Module):
                 output_sentences[idx] = next_word_logits
         # if inference mode is on
         else:
-            sos_token_tensor = torch.LongTensor([1], device=latent_emb.device).unsqueeze(0)
+            sos_token_tensor = torch.tensor([1], device=latent_emb.device).unsqueeze(0).long()
             word_emb = self.embedding(sos_token_tensor)
             hidden_states = torch.zeros(
                 1, model_config.gru_hidden_dim, device=latent_emb.device)
@@ -481,6 +481,6 @@ class AdversarialVAE(nn.Module):
 
         loss = nn.CrossEntropyLoss(ignore_index=0)
         recon_loss = loss(
-            output_logits.view(-1, model_config.vocab_size), input_sentences.view(-1))
+            output_logits.view(-1, model_config.vocab_size), input_sentences.view(-1).long())
 
         return recon_loss

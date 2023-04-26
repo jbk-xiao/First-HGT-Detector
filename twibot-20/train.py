@@ -62,14 +62,14 @@ if is_hgt_loader:
 else:
     train_loader = NeighborLoader(
         data,
-        num_neighbors={key: [-1] for key in data.edge_types},
+        num_neighbors={key: [10] for key in data.edge_types},
         shuffle=True,
         input_nodes=('user', data['user'].train_mask),
-        batch_size=512,
+        batch_size=256,
         num_workers=0)
     val_loader = NeighborLoader(
         data,
-        num_neighbors={key: [-1] for key in data.edge_types},
+        num_neighbors={key: [10] for key in data.edge_types},
         shuffle=True,
         input_nodes=('user', data['user'].val_mask),
         batch_size=128,
@@ -103,8 +103,9 @@ vae_and_cls_opt = torch.optim.Adam(
 @torch.no_grad()
 def init_params():
     batch = next(iter(train_loader))
+    batch = pad_one_batch(batch)
     batch = batch.to(device)
-    model(batch.x_dict, batch.edge_index_dict)
+    model(batch, 0)
 
 
 def pad_one_batch(batch):
@@ -114,12 +115,13 @@ def pad_one_batch(batch):
     sub_tweet_sequences = tweet_sequences[tweet_index]
     seq_lengths = batch['tweet']['seq_length']
     pad_tweet_sequences = np.ones((tweets_size, max_len)) * (words_size - 1)
-    content_bow = torch.zeros(tweets_size, words_size)
+    content_bow = torch.zeros(tweets_size, 500)
     for i in range(tweets_size):
         for word in sub_tweet_sequences[i]:
-            content_bow[i][word] += 1
+            if word < 500:
+                content_bow[i][word] += 1
         pad_tweet_sequences[i][0:seq_lengths[i]] = sub_tweet_sequences[i]
-    sub_tweet_sequences = torch.tensor(pad_tweet_sequences)
+    sub_tweet_sequences = torch.tensor(pad_tweet_sequences).int()
     style_labels = batch['tweet']['style_label']
 
     batch_data = HeteroData(
@@ -140,6 +142,7 @@ def pad_one_batch(batch):
             }
         }
     )
+    batch_data.edge_index_dict = batch.edge_index_dict
     return batch_data
 
 
@@ -169,8 +172,8 @@ def train(lr):
         # update content discriminator parametes
         # we need to retain the computation graph so that discriminator predictions are
         # not freed as we need them to calculate entropy.
-        # Note that even even detaching the discriminator branch won't help us since it
-        # will be freed and delete all the intermediary values(predictions, in our case).
+        # Note that even detaching the discriminator branch won't help us since it will
+        # be freed and delete all the intermediary values(predictions, in our case).
         # Hence, with no access to this branch we can't backprop the entropy loss
         content_disc_loss.backward(retain_graph=True)
         content_disc_opt.step()
@@ -249,7 +252,7 @@ def test(test_loader):
     recall = recall_score(label, out)
 
     print(f"Test: accuracy: {accuracy:.4f}, f1: {f1:.4f}, precision: {precision:.4f}, recall: {recall:.4f}")
-    torch.save(model, rf'./saved_models/acc{accuracy:.4f}.pickle')
+    torch.save(model, rf'./saved_models/drl-acc{accuracy:.4f}.pickle')
 
 
 init_params()

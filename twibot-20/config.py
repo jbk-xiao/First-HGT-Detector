@@ -1,8 +1,8 @@
 class ModelConfig:
 
     def __init__(self):
-        self.vocab_size = 3366013 + 1
-        self.content_bow_dim = 3366013 + 1
+        self.vocab_size = 600
+        self.content_bow_dim = 500
         self.max_seq_len = 754
         self.hgt_embedding_dim = 128
         self.style_hidden_dim = 16
