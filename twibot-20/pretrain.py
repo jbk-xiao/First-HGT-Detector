@@ -18,19 +18,11 @@ is_hgt_loader = False
 fixed_size = 4
 use_random_mask = False
 remove_profiles = True
-use_pretrain = True
-pretrain_file = ""
-tmp_files_root = r"./preprocess/tmp-files"
+
 
 print(f"{datetime.now()}----Loading data...")
 data, tweet_sequences, max_len, word_vec, _ = build_hetero_data(remove_profiles=remove_profiles, fixed_size=fixed_size)
 words_size = len(word_vec)
-if use_pretrain:
-    print(rf"Use pretrain: {tmp_files_root}/{pretrain_file}.")
-    model = torch.load(rf"{tmp_files_root}/{pretrain_file}")
-else:
-    model = HGTDetector(n_cat_prop=4, n_num_prop=5, des_size=768, tweet_size=768,
-                        embedding_dimension=128, word_vec=word_vec, dropout=0.3).to(device)
 
 test_data = data.subgraph(
     {
@@ -93,6 +85,8 @@ else:
 
 print(f"{datetime.now()}----Data loaded.")
 
+model = HGTDetector(n_cat_prop=4, n_num_prop=5, des_size=768, tweet_size=768,
+                    embedding_dimension=128, word_vec=word_vec, dropout=0.3).to(device)
 content_disc_params, style_disc_params, vae_and_classifiers_params, hgt_and_classification_params = model.get_params()
 # ============== Define optimizers ================#
 # content discriminator/adversary optimizer
@@ -151,11 +145,11 @@ def pad_one_batch(batch):
 
 def train(lr):
     model.train()
-    hgt_and_classification_optimizer = torch.optim.AdamW(hgt_and_classification_params, lr=lr, weight_decay=1e-5)
+    # hgt_and_classification_optimizer = torch.optim.AdamW(hgt_and_classification_params, lr=lr, weight_decay=1e-5)
     total_examples = total_correct = total_loss = 0
     total_content_disc_loss = total_style_disc_loss = total_vae_and_classifier_loss = 0
     for iteration, batch in enumerate(tqdm(train_loader)):
-        hgt_and_classification_optimizer.zero_grad()
+        # hgt_and_classification_optimizer.zero_grad()
         if use_random_mask:
             random_mask = random.randrange(0, 9)
             batch['user'].x[:, random_mask] = 0
@@ -178,27 +172,27 @@ def train(lr):
         # Note that even detaching the discriminator branch won't help us since it will
         # be freed and delete all the intermediary values(predictions, in our case).
         # Hence, with no access to this branch we can't backprop the entropy loss
-        # content_disc_loss.backward(retain_graph=True)
-        # content_disc_opt.step()
-        # content_disc_opt.zero_grad()
+        content_disc_loss.backward(retain_graph=True)
+        content_disc_opt.step()
+        content_disc_opt.zero_grad()
         total_content_disc_loss += float(content_disc_loss)
 
         # update style discriminator parameters
-        # style_disc_loss.backward(retain_graph=True)
-        # style_disc_opt.step()
-        # style_disc_opt.zero_grad()
+        style_disc_loss.backward(retain_graph=True)
+        style_disc_opt.step()
+        style_disc_opt.zero_grad()
         total_style_disc_loss += float(style_disc_loss)
 
         # =============== Update VAE and classifier parameters ===============#
-        # vae_and_classifier_loss.backward(retain_graph=True)
-        # vae_and_cls_opt.step()
-        # vae_and_cls_opt.zero_grad()
+        vae_and_classifier_loss.backward(retain_graph=True)
+        vae_and_cls_opt.step()
+        vae_and_cls_opt.zero_grad()
         total_vae_and_classifier_loss += float(vae_and_classifier_loss)
 
         # loss for classification
         loss = nn.functional.cross_entropy(out, batch['user'].y[train_mask])
-        loss.backward()
-        hgt_and_classification_optimizer.step()
+        # loss.backward()
+        # hgt_and_classification_optimizer.step()
         pred = out.argmax(dim=-1)
         total_correct += int((pred == batch['user'].y[train_mask]).sum())
 
@@ -255,7 +249,7 @@ def test(test_loader):
     recall = recall_score(label, out)
 
     print(f"Test: accuracy: {accuracy:.4f}, f1: {f1:.4f}, precision: {precision:.4f}, recall: {recall:.4f}")
-    torch.save(model, rf'./saved_models/drl-acc{accuracy:.4f}.pickle')
+    torch.save(model, rf'./saved_models/pretrain-drl-acc{accuracy:.4f}.pickle')
 
 
 init_params()
@@ -274,6 +268,6 @@ for epoch in range(1, 21):
         best_epoch = epoch
         best_model = copy.deepcopy(model.state_dict())
     print(f'Epoch: {epoch:03d}, Train_Acc: {train_acc:.4f}, Loss: {loss:.4f}, Val: {val_acc:.4f}, Val_loss: {val_loss:.4f}')
-print(f'Best val acc is: {best_val_acc:.4f}, in epoch: {best_epoch:03d}.')
+print(f'Best val acc for pretrain is: {best_val_acc:.4f}, in epoch: {best_epoch:03d}.')
 model.load_state_dict(best_model)
 test(test_loader)

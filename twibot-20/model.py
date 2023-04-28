@@ -91,7 +91,14 @@ class HGTDetector(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, data: HeteroData, iteration):
-        edge_index_dict = copy.deepcopy(data.edge_index_dict)
+        edge_index_dict = {}
+        # edge_type: torch.tensor([[int(i) for i in edge_index[0]], [int(i) for i in edge_index[1]]]).long()
+        for edge_type, edge_index in data.edge_index_dict.items():
+            edge_index_dict[edge_type] = torch.tensor(
+                [[int(i) for i in edge_index[0]], [int(i) for i in edge_index[1]]],
+                device=edge_index.device
+            ).long().detach_()
+
         x_dict = {"user": self.user_encoder(data["user"]["x"])}
         content_disc_loss, style_disc_loss, vae_and_classifier_loss, x_dict["tweet"] = self.tweet_encoder(
             data["tweet"]["sequence"],

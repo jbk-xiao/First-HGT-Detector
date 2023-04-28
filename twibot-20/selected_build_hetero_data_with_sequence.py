@@ -77,7 +77,7 @@ def build_hetero_data(remove_profiles=True, fixed_size=4) -> tuple[HeteroData, n
         user_label = int(label[user_id])
         for each_tweet in tweet_per_user:
             max_len = len(each_tweet) if len(each_tweet) > max_len else max_len
-            for i in enumerate(each_tweet):
+            for i, _ in enumerate(each_tweet):
                 if each_tweet[i] > words_size:
                     each_tweet[i] = words_size
             tweet_sequences.append(each_tweet)

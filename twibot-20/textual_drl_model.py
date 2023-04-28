@@ -90,8 +90,9 @@ class AdversarialVAE(nn.Module):
         sequences = sequences[perm_index]
         embedded_seqs = self.dropout(self.embedding(sequences))
         packed_seqs = pack_padded_sequence(
-            embedded_seqs, lengths=seq_lengths.cpu(), batch_first=True)
-        packed_output, (_) = self.encoder(packed_seqs)
+            embedded_seqs, lengths=seq_lengths.cpu(), batch_first=True, enforce_sorted=False)
+        packed_output, h = self.encoder(packed_seqs)
+        h.detach()
         output, _ = pad_packed_sequence(packed_output, batch_first=True)
         sentence_emb = output[torch.arange(output.size(0)).long(), seq_lengths-1]
         # get content and style embeddings from the sentence embeddings,i.e. final_hidden_state
@@ -183,7 +184,8 @@ class AdversarialVAE(nn.Module):
             embedded_seqs = self.embedding(sequences)
             packed_seqs = pack_padded_sequence(
                 embedded_seqs, lengths=seq_lengths, batch_first=True)
-            packed_output, (_) = self.encoder(packed_seqs)
+            packed_output, h = self.encoder(packed_seqs)
+            h.detach()
             output, _ = pad_packed_sequence(packed_output, batch_first=True)
             sentence_emb = output[torch.arange(output.size(0)), seq_lengths-1]
             # get content and style embeddings from the sentence embeddings,i.e. final_hidden_state
