@@ -114,14 +114,16 @@ def pad_one_batch(batch):
     pad_tweet_sequences = np.ones((tweets_size, max_len)) * (words_size - 1)
     content_bow = torch.zeros([tweets_size, 500])
     for i in range(tweets_size):
-        try:
+        if isinstance(sub_tweet_sequences[i], list):
             for word in sub_tweet_sequences[i]:
                 if word < 500:
                     content_bow[i][word] += 1
             pad_tweet_sequences[i][0:seq_lengths[i]] = sub_tweet_sequences[i]
-        except TypeError as e:
-            print(e)
-            print(f"i: {i}, tweet_id: {tweet_index[i]}, sub_tweet_sequences[i]: {sub_tweet_sequences[i]}.")
+        else:
+            for word in sub_tweet_sequences:
+                if word < 500:
+                    content_bow[i][word] += 1
+            pad_tweet_sequences[i][0:seq_lengths[i]] = sub_tweet_sequences
     sub_tweet_sequences = torch.tensor(pad_tweet_sequences).int()
     style_labels = batch['tweet']['style_label']
 
@@ -211,7 +213,7 @@ def train(lr):
     print(f"DRL loss: total_content_disc_loss: {total_content_disc_loss}, total_style_disc_loss: {total_style_disc_loss}"
           f", total_vae_and_classifier_loss: {total_vae_and_classifier_loss}.")
 
-    return (total_correct / total_examples), (total_loss / total_examples)
+    return (total_correct / total_examples), (total_loss / total_examples), total_vae_and_classifier_loss
 
 
 @torch.no_grad()
@@ -263,7 +265,8 @@ def test(test_loader):
 
 
 init_params()
-best_val_acc = 0.0
+# best_val_acc = 0.0
+min_loss = 999999999
 best_epoch = 0
 best_model = ''
 lr = 0.001
@@ -271,13 +274,14 @@ for epoch in range(1, 21):
     if epoch >= 50 and epoch % 50 == 0:
         lr = 0.1 * lr
         print(f"{datetime.now()}----Current lr: {lr}.")
-    train_acc, loss = train(lr)
+    train_acc, loss, total_vae_and_classifier_loss = train(lr)
     val_acc, val_loss = val(val_loader)
-    if val_acc > best_val_acc:
-        best_val_acc = val_acc
+    if min_loss > total_vae_and_classifier_loss:
+        min_loss = total_vae_and_classifier_loss
         best_epoch = epoch
         best_model = copy.deepcopy(model.state_dict())
     print(f'Epoch: {epoch:03d}, Train_Acc: {train_acc:.4f}, Loss: {loss:.4f}, Val: {val_acc:.4f}, Val_loss: {val_loss:.4f}')
-print(f'Best val acc for pretrain is: {best_val_acc:.4f}, in epoch: {best_epoch:03d}.')
+# print(f'Best val acc for pretrain is: {best_val_acc:.4f}, in epoch: {best_epoch:03d}.')
+print(f'Best total_vae_and_classifier_loss for pretrain is: {min_loss:.4f}, in epoch: {best_epoch:03d}.')
 model.load_state_dict(best_model)
 test(test_loader)

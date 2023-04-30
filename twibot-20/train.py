@@ -120,10 +120,16 @@ def pad_one_batch(batch):
     pad_tweet_sequences = np.ones((tweets_size, max_len)) * (words_size - 1)
     content_bow = torch.zeros([tweets_size, 500])
     for i in range(tweets_size):
-        for word in sub_tweet_sequences[i]:
-            if word < 500:
-                content_bow[i][word] += 1
-        pad_tweet_sequences[i][0:seq_lengths[i]] = sub_tweet_sequences[i]
+        if isinstance(sub_tweet_sequences[i], list):
+            for word in sub_tweet_sequences[i]:
+                if word < 500:
+                    content_bow[i][word] += 1
+            pad_tweet_sequences[i][0:seq_lengths[i]] = sub_tweet_sequences[i]
+        else:
+            for word in sub_tweet_sequences:
+                if word < 500:
+                    content_bow[i][word] += 1
+            pad_tweet_sequences[i][0:seq_lengths[i]] = sub_tweet_sequences
     sub_tweet_sequences = torch.tensor(pad_tweet_sequences).int()
     style_labels = batch['tweet']['style_label']
 
