@@ -112,7 +112,7 @@ def pad_one_batch(batch):
     sub_tweet_sequences = tweet_sequences[tweet_index]
     seq_lengths = batch['tweet']['seq_length']
     pad_tweet_sequences = np.ones((tweets_size, max_len)) * (words_size - 1)
-    content_bow = torch.zeros(tweets_size, 500)
+    content_bow = torch.zeros([tweets_size, 500])
     for i in range(tweets_size):
         for word in sub_tweet_sequences[i]:
             if word < 500:
@@ -120,6 +120,12 @@ def pad_one_batch(batch):
         pad_tweet_sequences[i][0:seq_lengths[i]] = sub_tweet_sequences[i]
     sub_tweet_sequences = torch.tensor(pad_tweet_sequences).int()
     style_labels = batch['tweet']['style_label']
+
+    if tweets_size == 0:
+        sub_tweet_sequences = (torch.ones([1, max_len]) * (words_size - 1)).int()
+        seq_lengths = torch.tensor([0]).long()
+        style_labels = torch.tensor([0, 0, 1]).int()
+        content_bow = torch.zeros([1, 500])
 
     batch_data = HeteroData(
         {
@@ -131,7 +137,7 @@ def pad_one_batch(batch):
                 'test_mask': batch['user']['test_mask']
             },
             'tweet': {
-                'x': batch['tweet']['x'],
+                # 'x': batch['tweet']['x'],
                 'sequence': sub_tweet_sequences,
                 'seq_length': seq_lengths,
                 'style_label': style_labels,
