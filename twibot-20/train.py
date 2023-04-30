@@ -129,7 +129,7 @@ def pad_one_batch(batch):
 
     if tweets_size == 0:
         sub_tweet_sequences = (torch.ones([1, max_len]) * (words_size - 1)).int()
-        seq_lengths = torch.tensor([0]).long()
+        seq_lengths = torch.tensor([[1]]).long()
         style_labels = torch.tensor([0, 0, 1]).int()
         content_bow = torch.zeros([1, 500])
 
