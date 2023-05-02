@@ -26,8 +26,8 @@ print(f"{datetime.now()}----Loading data...")
 data, tweet_sequences, max_len, word_vec, _ = build_hetero_data(remove_profiles=remove_profiles, fixed_size=fixed_size)
 words_size = len(word_vec)
 if use_pretrain:
-    print(rf"Use pretrain: {tmp_files_root}/{pretrain_file}.")
-    model = torch.load(rf"{tmp_files_root}/{pretrain_file}")
+    print(rf"Use pretrain: {pretrain_file}.")
+    model = torch.load(rf"./saved_models/{pretrain_file}")
 else:
     model = HGTDetector(n_cat_prop=4, n_num_prop=5, des_size=768, tweet_size=768,
                         embedding_dimension=128, word_vec=word_vec, dropout=0.3).to(device)
@@ -84,7 +84,7 @@ else:
         num_workers=0)
     test_loader = NeighborLoader(
         test_data,
-        num_neighbors={key: [-1] for key in test_data.edge_types},
+        num_neighbors={key: [10] for key in test_data.edge_types},
         shuffle=True,
         input_nodes=('user', test_data['user'].test_mask),
         batch_size=1,
@@ -135,8 +135,8 @@ def pad_one_batch(batch):
 
     if tweets_size == 0:
         sub_tweet_sequences = (torch.ones([1, max_len]) * (words_size - 1)).int()
-        seq_lengths = torch.tensor([[1]]).long()
-        style_labels = torch.tensor([0, 0, 1]).int()
+        seq_lengths = torch.tensor([1]).long()
+        style_labels = torch.tensor([[0, 0, 1]]).int()
         content_bow = torch.zeros([1, 500])
 
     batch_data = HeteroData(
