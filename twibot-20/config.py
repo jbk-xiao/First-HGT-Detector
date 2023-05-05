@@ -5,8 +5,8 @@ class ModelConfig:
         self.content_bow_dim = 500
         self.max_seq_len = 754
         self.hgt_embedding_dim = 128
-        self.style_hidden_dim = 16
-        self.content_hidden_dim = 112
+        self.style_hidden_dim = 64
+        self.content_hidden_dim = 64
         self.generative_emb_dim = 128
         self.num_style = 3
         self.gru_embedding_dim = 128

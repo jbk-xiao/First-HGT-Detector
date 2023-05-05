@@ -163,7 +163,7 @@ def pad_one_batch(batch):
 
 def train(lr):
     model.train()
-    hgt_and_classification_optimizer = torch.optim.AdamW(hgt_and_classification_params, lr=lr, weight_decay=1e-5)
+    hgt_and_classification_optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-5)
     total_examples = total_correct = total_loss = 0
     total_content_disc_loss = total_style_disc_loss = total_vae_and_classifier_loss = 0
     for iteration, batch in enumerate(tqdm(train_loader)):

@@ -75,7 +75,7 @@ def build_hetero_data(remove_profiles=True, fixed_size=4) -> tuple[HeteroData, n
     user_id = tweet_id = 0
     for tweet_per_user in tqdm(tweets_per_user, desc="Loading tweets..."):
         user_label = int(label[user_id])
-        is_test = int(test_idx[user_id])
+        is_test = int(test_index[user_id])
         for each_tweet in tweet_per_user:
             max_len = len(each_tweet) if len(each_tweet) > max_len else max_len
             for i, _ in enumerate(each_tweet):
