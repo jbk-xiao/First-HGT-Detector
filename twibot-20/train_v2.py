@@ -22,7 +22,7 @@ use_pretrain = True
 pretrain_file = ""
 tmp_files_root = r"./preprocess/tmp-files"
 
-tweet_encoder = torch.load(rf"./saved_models/{pretrain_file}", map_location='cpu').tweet_encoder.to(device)
+tweet_encoder = torch.load(rf"./saved_models/{pretrain_file}", map_location=device).tweet_encoder.to(device)
 
 print(f"{datetime.now()}----Loading data...")
 data, tweet_sequences, max_len, word_vec, _ = build_hetero_data(remove_profiles=remove_profiles, fixed_size=fixed_size)
@@ -97,7 +97,7 @@ def init_params():
     batch = next(iter(train_loader))
     batch = pad_one_batch(batch)
     batch = batch.to(device)
-    model(batch, 0)
+    model(batch)
 
 
 def pad_one_batch(batch):
@@ -165,7 +165,7 @@ def train(lr):
         batch = batch.to(device)
 
         train_mask = batch['user'].train_mask
-        out = model(batch, iteration)
+        out = model(batch)
         out = out[train_mask]
         # out = model(batch.x_dict, batch.edge_index_dict)[train_mask]
 
@@ -192,7 +192,7 @@ def val(val_loader):
         batch = batch.to(device)
         # batch_size = batch['user'].batch_size
         val_mask = batch['user'].val_mask
-        out = model(batch, iteration)
+        out = model(batch)
         out = out[val_mask]
         # out = model(batch.x_dict, batch.edge_index_dict)[val_mask]
         loss = nn.functional.cross_entropy(out, batch['user'].y[val_mask])
@@ -214,7 +214,7 @@ def test(test_loader):
         batch = pad_one_batch(batch)
         batch = batch.to(device)
         test_mask = batch['user'].test_mask
-        pred = model(batch, iteration)
+        pred = model(batch)
         pred = pred[test_mask]
         # pred = model(batch.x_dict, batch.edge_index_dict)[test_mask]
         pred = pred.argmax(dim=-1)

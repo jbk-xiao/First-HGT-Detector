@@ -103,19 +103,20 @@ class HGTDetector(nn.Module):
                 device=edge_index.device
             ).long().detach_()
 
+        num_user = len(data["user"]["y"])
         user_text_dict = {}
-        for user_idx in range(len(data.x_dict["user"])):
+        for user_idx in range(num_user):
             user_text_dict[user_idx] = []
         for tweet_idx, user_idx in torch.transpose(edge_index_dict[("tweet", "rev_post", "user")], dim0=0, dim1=1).tolist():
             user_text_dict[user_idx].append(tweet_idx)
 
         x_dict = {
-            "user": torch.zeros([len(data.x_dict["user"]), 128 * self.num_neighbors]),
+            "user": torch.zeros([num_user, 128 * self.num_neighbors]),
             "tweet": data["tweet"]["x"]
         }
 
-        for user_idx in range(len(data.x_dict["user"])):
-            for idx, tweet_idx in user_text_dict[user_idx]:
+        for user_idx in range(num_user):
+            for idx, tweet_idx in enumerate(user_text_dict[user_idx]):
                 if idx == self.num_neighbors:
                     break
                 x_dict["user"][user_idx][(idx * 128):((idx + 1) * 128)] = x_dict["tweet"][tweet_idx]
