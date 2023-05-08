@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from config import ModelConfig
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 model_config = ModelConfig()
 
 
@@ -43,6 +43,7 @@ class TextDataset(Dataset):
         test_index = test_index.bool()
 
         logger.info(f"{datetime.now()}----Loading tweet...")
+        print(f"{datetime.now()}----Loading tweet...")
 
         # word_vec = np.load(rf"{tmp_files_root}/vec.npy")  # 截取到content_bow_dim - 1大小，需要增加一行
         self.words_size = model_config.content_bow_dim - 1
