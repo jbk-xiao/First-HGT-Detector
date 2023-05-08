@@ -94,20 +94,14 @@ class TextDataset(Dataset):
         tweet_sequences = self.tweet_sequences[index]
         seq_lengths = self.seq_lengths[index]
         style_labels = self.style_labels[index]
-        tweets_size = len(index)
-        pad_tweet_sequences = np.ones((tweets_size, self.max_len)) * self.words_size # words_size = content_bow_dim - 1
-        content_bow = torch.zeros([tweets_size, model_config.content_bow_dim])
-        for i in range(tweets_size):
-            if isinstance(tweet_sequences[i], list):
-                for word in tweet_sequences[i]:
-                    if word < model_config.content_bow_dim:
-                        content_bow[i][word] += 1
-                pad_tweet_sequences[i][0:seq_lengths[i]] = tweet_sequences[i]
-            else:
-                for word in tweet_sequences:
-                    if word < model_config.content_bow_dim:
-                        content_bow[i][word] += 1
-                pad_tweet_sequences[i][0:seq_lengths[i]] = tweet_sequences
+
+        pad_tweet_sequences = np.ones(self.max_len) * self.words_size  # words_size = content_bow_dim - 1
+        content_bow = torch.zeros(model_config.content_bow_dim)
+
+        for word in tweet_sequences:
+            if word < model_config.content_bow_dim:
+                content_bow[word] += 1
+        pad_tweet_sequences[0:int(seq_lengths)] = tweet_sequences
         tweet_sequences = torch.tensor(pad_tweet_sequences).int()
 
         return tweet_sequences, seq_lengths, style_labels, content_bow
