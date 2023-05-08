@@ -111,7 +111,7 @@ class HGTDetector(nn.Module):
             user_text_dict[user_idx].append(tweet_idx)
 
         x_dict = {
-            "user": torch.zeros([num_user, 128 * self.num_neighbors]),
+            "user": torch.zeros([num_user, 128 * self.num_neighbors], device=data["tweet"]["x"].device),
             "tweet": data["tweet"]["x"]
         }
 

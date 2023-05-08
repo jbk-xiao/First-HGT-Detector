@@ -12,6 +12,7 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 
 from model_v2 import HGTDetector
 from selected_build_hetero_data_with_sequence import build_hetero_data
+from config import ModelConfig
 
 device = "cuda:0"
 is_hgt_loader = False
@@ -22,6 +23,10 @@ use_pretrain = True
 pretrain_file = ""
 tmp_files_root = r"./preprocess/tmp-files"
 
+model_config = ModelConfig()
+content_bow_dim = model_config.content_bow_dim
+
+torch.backends.cudnn.enabled = False
 tweet_encoder = torch.load(rf"./saved_models/{pretrain_file}", map_location=device).tweet_encoder.to(device)
 
 print(f"{datetime.now()}----Loading data...")
@@ -107,16 +112,16 @@ def pad_one_batch(batch):
     sub_tweet_sequences = tweet_sequences[tweet_index]
     seq_lengths = batch['tweet']['seq_length']
     pad_tweet_sequences = np.ones((tweets_size, max_len)) * (words_size - 1)
-    content_bow = torch.zeros([tweets_size, 500])
+    content_bow = torch.zeros([tweets_size, content_bow_dim])
     for i in range(tweets_size):
         if isinstance(sub_tweet_sequences[i], list):
             for word in sub_tweet_sequences[i]:
-                if word < 500:
+                if word < content_bow_dim:
                     content_bow[i][word] += 1
             pad_tweet_sequences[i][0:seq_lengths[i]] = sub_tweet_sequences[i]
         else:
             for word in sub_tweet_sequences:
-                if word < 500:
+                if word < content_bow_dim:
                     content_bow[i][word] += 1
             pad_tweet_sequences[i][0:seq_lengths[i]] = sub_tweet_sequences
     sub_tweet_sequences = torch.tensor(pad_tweet_sequences).int()
@@ -126,9 +131,9 @@ def pad_one_batch(batch):
         sub_tweet_sequences = (torch.ones([1, max_len]) * (words_size - 1)).int()
         seq_lengths = torch.tensor([1]).long()
         style_labels = torch.tensor([[0, 0, 1]]).int()
-        content_bow = torch.zeros([1, 500])
+        content_bow = torch.zeros([1, content_bow_dim])
 
-    tweet_x = tweet_encoder(sub_tweet_sequences, seq_lengths, style_labels, content_bow, 0)
+    _, _, _, tweet_x = tweet_encoder(sub_tweet_sequences.to(device), seq_lengths.to(device), style_labels.to(device), content_bow.to(device), 0)
     batch_data = HeteroData(
         {
             'user': {
