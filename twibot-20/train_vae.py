@@ -1,10 +1,11 @@
 import torch
 from torch.utils.data import DataLoader
+from torch import nn
 
 import numpy as np
 from tqdm import tqdm, trange
 
-from text_dataset import TextDataset
+from text_dataset_per_user import TextDataset
 from textual_drl_model import AdversarialVAE
 from config import ModelConfig
 
@@ -23,10 +24,11 @@ blank_vec = torch.zeros((1, word_vec.shape[-1]))
 word_vec = torch.cat((word_vec, blank_vec), dim=0)
 
 vae_model = AdversarialVAE(word_vec).to(device)
+content_discriminator_params, style_discriminator_params, vae_and_classifier_params = vae_model.get_params()
+vae_model = nn.DataParallel(vae_model)
 
 train_set = TextDataset('train')
 train_loader = DataLoader(train_set, batch_size=256)
-content_discriminator_params, style_discriminator_params, vae_and_classifier_params = vae_model.get_params()
 # ============== Define optimizers ================#
 # content discriminator/adversary optimizer
 content_disc_opt = torch.optim.RMSprop(content_discriminator_params, lr=1e-3)
@@ -45,27 +47,27 @@ for epoch in trange(max_epochs, desc="Epoch"):
         )
         # ============== Update Adversary/Discriminator parameters ===========#
         # update content discriminator parameters
-        content_disc_loss.backward(retain_graph=True)
+        content_disc_loss.sum().backward(retain_graph=True)
         content_disc_opt.step()
         content_disc_opt.zero_grad()
-        total_content_disc_loss += float(content_disc_loss)
+        total_content_disc_loss += float(content_disc_loss.sum())
 
         # update style discriminator parameters
-        style_disc_loss.backward(retain_graph=True)
+        style_disc_loss.sum().backward(retain_graph=True)
         style_disc_opt.step()
         style_disc_opt.zero_grad()
-        total_style_disc_loss += float(style_disc_loss)
+        total_style_disc_loss += float(style_disc_loss.sum())
 
         # =============== Update VAE and classifier parameters ===============#
-        vae_and_classifier_loss.backward()
+        vae_and_classifier_loss.sum().backward()
         vae_and_cls_opt.step()
         vae_and_cls_opt.zero_grad()
-        total_vae_and_classifier_loss += float(vae_and_classifier_loss)
+        total_vae_and_classifier_loss += float(vae_and_classifier_loss.sum())
     print(f"total_content_disc_loss: {total_content_disc_loss}, total_style_disc_loss: {total_style_disc_loss}"
           f", total_vae_and_classifier_loss: {total_vae_and_classifier_loss}.")
     total_loss = total_vae_and_classifier_loss
 
-torch.save(vae_model, rf"saved_models/vae-{max_epochs}-{total_loss:.6f}.pickle")
+torch.save(vae_model.module.cpu(), rf"saved_models/vae-{max_epochs}-{total_loss:.6f}.pickle")
 torch.save(
     {
         'content_disc': content_disc_opt.state_dict(),

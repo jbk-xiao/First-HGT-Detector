@@ -91,6 +91,7 @@ class AdversarialVAE(nn.Module):
         embedded_seqs = self.dropout(self.embedding(sequences))
         packed_seqs = pack_padded_sequence(
             embedded_seqs, lengths=seq_lengths.cpu(), batch_first=True, enforce_sorted=False)
+        self.encoder.flatten_parameters()
         packed_output, h = self.encoder(packed_seqs)
         h.detach()
         output, _ = pad_packed_sequence(packed_output, batch_first=True)
