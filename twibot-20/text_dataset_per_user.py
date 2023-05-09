@@ -52,7 +52,7 @@ class TextDataset(Dataset):
         # word_vec = np.load(rf"{tmp_files_root}/vec.npy")  # 截取到content_bow_dim - 1大小，需要增加一行
         self.words_size = model_config.content_bow_dim - 1
         # 令所有大于conten_bow_dim - 1的值都等于 conten_bow_dim - 1
-        tweets_per_user = np.load(rf"{tmp_files_root}/tweets.npy", allow_pickle=True)
+        tweets_per_user = np.load(rf"{tmp_files_root}/less_tweets.npy", allow_pickle=True)
         if remove_support:
             tweets_per_user = tweets_per_user[0:11826]
 
