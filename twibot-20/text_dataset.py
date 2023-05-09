@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 model_config = ModelConfig()
 
 
+# 构建text_dataset，其中，每个item是一条tweet
 class TextDataset(Dataset):
     def __init__(self, action):
         tmp_files_root = r"./preprocess/tmp-files"
