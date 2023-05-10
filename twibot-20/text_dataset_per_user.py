@@ -77,8 +77,12 @@ class TextDataset(Dataset):
                 if tweet_num_per_user > model_config.max_tweets_per_user:
                     break
             max_len = len(cat_tweet_per_user) if len(cat_tweet_per_user) > max_len else max_len
-            tweet_sequences.append(cat_tweet_per_user if tweet_num_per_user > 0 else [self.words_size])
-            seq_lengths.append(len(cat_tweet_per_user) if tweet_num_per_user > 0 else 1)
+            if len(cat_tweet_per_user) > model_config.max_seq_len:
+                tweet_sequences.append(cat_tweet_per_user[0:model_config.max_seq_len])
+                seq_lengths.append(model_config.max_seq_len)
+            else:
+                tweet_sequences.append(cat_tweet_per_user if tweet_num_per_user > 0 else [self.words_size])
+                seq_lengths.append(len(cat_tweet_per_user) if tweet_num_per_user > 0 else 1)
             style_label = [0, 0, 0]
             style_label[user_label + 1] = 1
             style_labels.append(style_label)
@@ -91,9 +95,11 @@ class TextDataset(Dataset):
         print(f"{datetime.now()}----{tweet_id} tweets of {user_id} users loaded.")
         test_tweet_mask = torch.tensor(test_tweet_arr).bool()
         self.tweets_length = tweet_id
-        self.max_len = max_len
-        logger.info(f"tweets length: {self.tweets_length}, max length of each tweet: {self.max_len}")
-        print(f"tweets length: {self.tweets_length}, max length of each tweet: {self.max_len}")
+        logger.info(f"tweets length: {self.tweets_length}, max length of each tweet: {max_len},"
+                    f" config max_seq_len: {model_config.max_seq_len}.")
+        print(f"tweets length: {self.tweets_length}, max length of each tweet: {max_len}, config max_seq_len:"
+              f" {model_config.max_seq_len}.")
+        self.max_len = max_len if max_len < model_config.max_seq_len else model_config.max_seq_len
         self.tweet_sequences = np.array(tweet_sequences, dtype=object)
         del tweet_sequences
         self.seq_lengths = torch.tensor(seq_lengths).long()
@@ -121,6 +127,13 @@ class TextDataset(Dataset):
         tweet_sequences = torch.tensor(pad_tweet_sequences).int()
 
         return tweet_sequences, seq_lengths, style_labels, content_bow
+
+    def get_iter(self) -> iter:
+        for index in range(self.tweets_length):
+            pad_tweet_sequences = np.ones(self.max_len) * self.words_size  # words_size = content_bow_dim - 1
+            pad_tweet_sequences[0:int(self.seq_lengths[index])] = self.tweet_sequences[index]
+            tweet_sequences = torch.tensor(pad_tweet_sequences).int()
+            yield tweet_sequences, self.seq_lengths[index]
 
     def __len__(self):
         return self.tweets_length

@@ -164,7 +164,7 @@ class AdversarialVAE(nn.Module):
 
         return content_disc_loss, style_disc_loss, vae_and_classifier_loss, generative_emb
 
-    def get_style_content_emb(self, sequences, seq_lengths, style_labels, content_bow):
+    def get_style_content_emb(self, sequences, seq_lengths):
         """
         Args:
             sequences : token indices of input sentences of shape = (batch_size,max_seq_length)
