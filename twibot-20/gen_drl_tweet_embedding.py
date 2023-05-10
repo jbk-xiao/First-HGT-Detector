@@ -12,9 +12,9 @@ generate_dataset = TextDataset('generate')
 gen_iter = generate_dataset.get_iter()
 
 tweet_embs = []
-for tweet_sequence, seq_length in tqdm(gen_iter, desc='Generating tweet emb...', ncols=generate_dataset.__len__()):
+for tweet_sequence, seq_length in tqdm(gen_iter, desc='Generating tweet emb...', total=generate_dataset.__len__()):
     content_emb, style_emb = vae_model.get_style_content_emb(
-        tweet_sequence.unsqueeze(0).to(device), seq_length.unsqueeze(0).to(device)
+        tweet_sequence.unsqueeze(0).to(device), seq_length.unsqueeze(0)
     )
     tweet_emb = torch.concat((content_emb, style_emb), dim=1)
     tweet_embs.append(tweet_emb)
