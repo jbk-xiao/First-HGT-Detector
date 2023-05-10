@@ -58,8 +58,8 @@ train_loader = DataLoader(train_dataset, batch_size=512)
 val_loader = DataLoader(val_dataset, batch_size=1)
 test_loader = DataLoader(test_dataset, batch_size=1)
 
-tweet_emb = torch.load(rf'preprocess/tmp-files/{tweet_emb_file}')
-label = torch.load(rf'preprocess/tmp-files/label_tensor.pt')[0:11826]
+tweet_emb = torch.load(rf'preprocess/tmp-files/{tweet_emb_file}').to(device)
+label = torch.load(rf'preprocess/tmp-files/label_tensor.pt')[0:11826].to(device)
 text_classifier = TextClassifier(embedding_dimension=128, hidden_dimension=256, output_dimension=2, dropout=0).to(device)
 params = text_classifier.parameters()
 optimizer = torch.optim.AdamW(params, lr=lr)
@@ -86,6 +86,7 @@ for i in range(epoch):
     total_examples = total_correct = total_loss = 0
     for val_index in tqdm(val_loader):
         text_classifier.eval()
+        val_index = val_index.squeeze()
         out = text_classifier(tweet_emb[val_index])
         loss = nn.functional.cross_entropy(out, label[val_index])
         pred = out.argmax(dim=-1)
@@ -105,6 +106,7 @@ pred = []
 test_label = []
 for test_index in tqdm(test_loader):
     text_classifier.eval()
+    test_index = test_index.squeeze()
     out = text_classifier(tweet_emb[test_index])
     pred += out.argmax(dim=-1).tolist()
     test_label += label[test_index].tolist()
