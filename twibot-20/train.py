@@ -12,14 +12,12 @@ from build_hetero_data import build_hetero_data
 
 device = "cuda:0"
 is_hgt_loader = True
-fixed_size = 4
 
-model = HGTDetector(n_cat_prop=4, n_num_prop=5, des_size=768, tweet_size=768, fixed_size=fixed_size,
-                    embedding_dimension=128, dropout=0.3, num_heads=4, layer_norm_eps=1e-5).to(device)
+model = HGTDetector(n_cat_prop=4, n_num_prop=5, des_size=768, tweet_size=768, embedding_dimension=256, dropout=0.3).to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, weight_decay=1e-5)
 
 print(f"{datetime.now()}----Loading data...")
-data = build_hetero_data(fixed_szie=fixed_size)
+data = build_hetero_data()
 
 test_data = data.subgraph(
     {

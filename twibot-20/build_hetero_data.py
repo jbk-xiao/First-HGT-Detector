@@ -6,7 +6,7 @@ import numpy as np
 from datetime import datetime
 
 
-def build_hetero_data(fixed_szie=4) -> HeteroData:
+def build_hetero_data() -> HeteroData:
     tmp_files_root = r"./preprocess/tmp-files"
     print(f"{datetime.now()}----Loading properties...")
     # cat_props = torch.split(torch.load(rf"{tmp_files_root}/cat_props_tensor.pt"), 11826)[0]
@@ -17,7 +17,7 @@ def build_hetero_data(fixed_szie=4) -> HeteroData:
     des = torch.load(rf"{tmp_files_root}/des_tensor.pt")
     user_profiles = torch.concat([cat_props, num_props, des], dim=1)
     size_samples = user_profiles.size(dim=0)  # int
-    consistency_props = torch.zeros([size_samples, fixed_szie * fixed_szie])
+    consistency_props = torch.zeros([size_samples, 16])
     user_profiles = torch.concat([user_profiles, consistency_props], dim=1)
 
     print(f"{datetime.now()}----Loading label...")
