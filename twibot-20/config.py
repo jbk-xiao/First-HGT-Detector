@@ -3,7 +3,8 @@ class ModelConfig:
     def __init__(self):
         self.vocab_size = 1131110 + 1
         self.content_bow_dim = 1131110 + 1
-        self.max_seq_len = 754
+        self.max_seq_len = 5000  # 754 for single tweet, 16884 for each user's tweets.
+        self.max_tweets_per_user = 999
         self.hgt_embedding_dim = 128
         self.style_hidden_dim = 64
         self.content_hidden_dim = 64

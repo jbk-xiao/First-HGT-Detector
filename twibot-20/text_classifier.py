@@ -1,3 +1,4 @@
+# pure MLP classifier
 import copy
 
 import torch
@@ -8,7 +9,7 @@ from tqdm import tqdm
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 
 device = 'cuda:0'
-tweet_emb_file = 'vae-2-5368.065876.pickle-tweet_embs.pt'
+tweet_emb_file = 'vae-10-571.920975.pickle-tweet_embs.pt'
 lr = 1e-4
 epoch = 2
 
@@ -58,9 +59,14 @@ train_loader = DataLoader(train_dataset, batch_size=512)
 val_loader = DataLoader(val_dataset, batch_size=1)
 test_loader = DataLoader(test_dataset, batch_size=1)
 
-tweet_emb = torch.load(rf'preprocess/tmp-files/{tweet_emb_file}').to(device)
+tweet_emb = torch.load(rf'preprocess/tmp-files/{tweet_emb_file}')\
+    # .to(device)
+cat_props = torch.load(rf"preprocess/tmp-files/cat_props_tensor.pt")[0:11826]
+num_props = torch.load(rf"preprocess/tmp-files/num_props_tensor.pt")[0:11826]
+des = torch.load(rf"preprocess/tmp-files/vae-10-571.920975.pickle-des_embs.pt")[0:11826]
+tweet_emb = torch.concat([tweet_emb, cat_props, num_props, des], dim=1).to(device)
 label = torch.load(rf'preprocess/tmp-files/label_tensor.pt')[0:11826].to(device)
-text_classifier = TextClassifier(embedding_dimension=128, hidden_dimension=256, output_dimension=2, dropout=0).to(device)
+text_classifier = TextClassifier(embedding_dimension=tweet_emb.shape[1], hidden_dimension=256, output_dimension=2, dropout=0).to(device)
 params = text_classifier.parameters()
 optimizer = torch.optim.AdamW(params, lr=lr)
 

@@ -81,8 +81,8 @@ class TextDataset(Dataset):
                 tweet_sequences.append(cat_tweet_per_user[0:model_config.max_seq_len])
                 seq_lengths.append(model_config.max_seq_len)
             else:
-                tweet_sequences.append(cat_tweet_per_user if tweet_num_per_user > 0 else [self.words_size])
-                seq_lengths.append(len(cat_tweet_per_user) if tweet_num_per_user > 0 else 1)
+                tweet_sequences.append(cat_tweet_per_user if len(cat_tweet_per_user) > 0 else [self.words_size])
+                seq_lengths.append(len(cat_tweet_per_user) if len(cat_tweet_per_user) > 0 else 1)
             style_label = [0, 0, 0]
             style_label[user_label + 1] = 1
             style_labels.append(style_label)
