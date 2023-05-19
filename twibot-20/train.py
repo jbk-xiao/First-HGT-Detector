@@ -11,10 +11,10 @@ from model import HGTDetector
 from build_hetero_data import build_hetero_data
 
 device = "cuda:0"
-is_hgt_loader = True
+is_hgt_loader = False
 
 model = HGTDetector(n_cat_prop=4, n_num_prop=5, des_size=768, tweet_size=768, embedding_dimension=256, dropout=0.3).to(device)
-optimizer = torch.optim.AdamW(model.parameters(), lr=0.001)
+optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
 
 print(f"{datetime.now()}----Loading data...")
 data = build_hetero_data()
@@ -144,7 +144,7 @@ init_params()
 best_val_acc = 0.0
 best_epoch = 0
 best_model = ''
-for epoch in range(1, 21):
+for epoch in range(1, 501):
     train_acc, loss = train()
     val_acc = val(val_loader)
     if val_acc > best_val_acc:
