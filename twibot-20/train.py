@@ -104,13 +104,13 @@ def train():
 def val(loader):
     model.eval()
 
-    total_examples = total_correct = 0
+    total_examples = total_correct = total_loss = 0
     for batch in tqdm(loader):
         batch = batch.to(device)
         # batch_size = batch['user'].batch_size
         mask = batch['user'].val_mask
-        out = model(batch.x_dict, batch.edge_index_dict)
-        pred = out.argmax(dim=-1)[mask]
+        out = model(batch.x_dict, batch.edge_index_dict)[mask]
+        pred = out.argmax(dim=-1)
         # print(f"batch_size: {batch_size}")
         # print(f"mask: {mask}")
         # print(f"pred: {pred}")
@@ -119,8 +119,10 @@ def val(loader):
         # print(f"batch['user'].y[mask]: {batch['user'].y[mask]}")
         total_examples += mask.sum()
         total_correct += int((pred == batch['user'].y[mask]).sum())
+        loss = nn.functional.cross_entropy(out, batch['user'].y[mask])
+        total_loss += float(loss) * mask.sum()
 
-    return total_correct / total_examples
+    return (total_correct / total_examples), (total_loss / total_examples)
 
 
 @torch.no_grad()
@@ -146,12 +148,12 @@ best_epoch = 0
 best_model = ''
 for epoch in range(1, 501):
     train_acc, loss = train()
-    val_acc = val(val_loader)
+    val_acc, val_loss = val(val_loader)
     if val_acc > best_val_acc:
         best_val_acc = val_acc
         best_epoch = epoch
         best_model = copy.deepcopy(model.state_dict())
-    print(f'Epoch: {epoch:03d}, Train_Acc: {train_acc:.4f}, Loss: {loss:.4f}, Val: {val_acc:.4f}')
+    print(f'Epoch: {epoch:03d}, Train_Acc: {train_acc:.4f}, Loss: {loss:.4f}, Val: {val_acc:.4f}, V_Loss: {val_loss:.4f}')
 print(f'Best val acc is: {best_val_acc:.4f}, in epoch: {best_epoch:03d}.')
 model.load_state_dict(best_model)
 test(test_data)
