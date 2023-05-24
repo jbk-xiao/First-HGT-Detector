@@ -11,7 +11,9 @@ for user_idx in range(11826):
     user_tweets.append([])
 for user_idx, tweet_idx in torch.transpose(post, dim0=0, dim1=1).tolist():
     user_tweets[user_idx].append(tweet[tweet_idx])
+tweet_counts = []
 for user_idx in range(11826):
+    tweet_counts.append(len(user_tweets[user_idx]))
     if len(user_tweets[user_idx]) == 0:
         user_tweets[user_idx] = torch.zeros([1, 768])
     else:
@@ -24,6 +26,7 @@ for user_idx in range(11826):
         weight = (similarity - similarity.min()) / (similarity.max() - similarity.min())
     else:
         weight = torch.zeros_like(similarity)
+    weight = nn.Softmax(dim=-1)(- weight)
     weighted_tweets = torch.einsum('i, ij -> ij', weight, user_tweets[user_idx])
     selected_tweets.append(weighted_tweets.sum(dim=0))
 selected_tweets = torch.stack(selected_tweets)
