@@ -1,5 +1,5 @@
 import torch
-from numpy import ndarray
+from torch import Tensor
 from torch_geometric.data import HeteroData
 from torch_geometric.transforms import ToUndirected
 
@@ -7,23 +7,23 @@ import numpy as np
 from datetime import datetime
 
 
-def build_hetero_data() -> tuple[HeteroData, ndarray]:
+def build_hetero_data() -> tuple[HeteroData, Tensor, Tensor]:
     tmp_files_root = r"./preprocess/tmp-files"
     print(f"{datetime.now()}----Loading properties...")
     # cat_props = torch.split(torch.load(rf"{tmp_files_root}/cat_props_tensor.pt"), 11826)[0]
     # num_props = torch.split(torch.load(rf"{tmp_files_root}/num_props_tensor.pt"), 11826)[0]
     # des = torch.split(torch.load(rf"{tmp_files_root}/des_tensor.pt"), 11826)[0]
-    cat_props = torch.load(rf"{tmp_files_root}/cat_props_tensor.pt")
-    num_props = torch.load(rf"{tmp_files_root}/num_props_tensor.pt")
-    des = torch.load(rf"{tmp_files_root}/des_tensor.pt")
-    user_profiles = torch.concat([cat_props, num_props, des], dim=1)
+    cat_props = torch.load(rf"{tmp_files_root}/cat_props_tensor.pt")  # shape: [229850, 4]
+    num_props = torch.load(rf"{tmp_files_root}/num_props_tensor.pt")  # shape: [229850, 5]
+    des = torch.load(rf"{tmp_files_root}/des_tensor.pt")  # shape: [229850, word_emb_dim]
+    user_profiles = torch.concat([cat_props, num_props], dim=1)
     size_samples = user_profiles.size(dim=0)  # int
 
     print(f"{datetime.now()}----Loading label...")
-    label = torch.load(rf"{tmp_files_root}/label_tensor.pt")
-    label_tensor = torch.zeros(size_samples) * (-1)
+    label = torch.load(rf"{tmp_files_root}/label_tensor.pt")  # shape: [11826]
+    label_tensor = torch.ones(size_samples) * (-1)  # shape: [229850]
     label_tensor[0:len(label)] = label
-    label = label_tensor
+    label = label_tensor.long()
 
     print(f"{datetime.now()}----Loading tweet...")
     tweet = torch.load(rf"{tmp_files_root}/tweet_tensor.pt")
@@ -32,18 +32,18 @@ def build_hetero_data() -> tuple[HeteroData, ndarray]:
     friend = torch.load(rf"{tmp_files_root}/friend_edge_index.pt")
     post = torch.load(rf"{tmp_files_root}/post_edge_index.pt")
 
-    user_tweets = []
-    for user_idx in range(11826):
-        # user_text_dict[user_idx] = []
-        user_tweets.append([])
+    user_tweets = [[]] * 11826
+    tweet_counts = [0] * 11826
     for user_idx, tweet_idx in torch.transpose(post, dim0=0, dim1=1).tolist():
         user_tweets[user_idx].append(tweet[tweet_idx])
+        tweet_counts[user_idx] += 1
+    del tweet, user_idx, tweet_idx
     for user_idx in range(11826):
-        if len(user_tweets[user_idx]) == 0:
-            user_tweets[user_idx] = torch.zeros([1, 768])
-        else:
-            user_tweets[user_idx] = torch.stack(user_tweets[user_idx])
-    user_tweets = np.array(user_tweets, dtype=object)
+        user_tweets[user_idx] = user_tweets[user_idx][0:min(tweet_counts[user_idx], 200)]
+        for _ in range(min(tweet_counts[user_idx], 200), 200):
+            user_tweets[user_idx].append(torch.zeros([768]))
+        user_tweets[user_idx] = torch.stack(user_tweets[user_idx])
+    user_tweets = torch.stack(user_tweets)  # shape: [11826, 200, 768]
 
     # train_index = torch.load(rf"{tmp_files_root}/train_index.pt").long()
     train_idx = np.array(torch.load(rf"{tmp_files_root}/train_index.pt"))
@@ -63,11 +63,6 @@ def build_hetero_data() -> tuple[HeteroData, ndarray]:
     test_index[test_idx] = 1
     test_index = test_index.bool()
 
-    test_tweet_idx = torch.load(rf"{tmp_files_root}/test_tweets_id.pt")
-    test_tweet_mask = torch.zeros(tweet.size(dim=0))
-    test_tweet_mask[test_tweet_idx] = 1
-    test_tweet_mask = test_tweet_mask.bool()
-
     print(f"{datetime.now()}----Building data...")
     data = HeteroData(
         {
@@ -84,5 +79,5 @@ def build_hetero_data() -> tuple[HeteroData, ndarray]:
     )
     undirected_transform = ToUndirected(merge=True)
     data = undirected_transform(data)
-    return data, user_tweets
+    return data, des, user_tweets
 
