@@ -84,10 +84,11 @@ print(f"{datetime.now()}----Data loaded.")
 
 def forward_one_batch(batch, task):
     assert task in ['train', 'val', 'test']
+    batch = batch.to(device)
     cur_batch_size = batch['user'].batch_size
     cur_des = des[batch['user'].input_id]
     cur_tweets = user_tweets[batch['user'].input_id]
-    out = model(batch.x_dict.to(device), batch.edge_index_dict.to(device), cur_des.to(device), cur_tweets.to(device))
+    out = model(batch.x_dict, batch.edge_index_dict, cur_des.to(device), cur_tweets.to(device))
     return cur_batch_size, out
 
 
@@ -150,7 +151,7 @@ def test():
     recall = recall_score(label, out)
 
     print(f"Test, accuracy: {accuracy:.4f}, f1: {f1:.4f}, precision: {precision:.4f}, recall: {recall:.4f}")
-    torch.save(model, rf'./saved_models/acc{accuracy:.4f}.pickle')
+    torch.save(model, rf'./saved_models/dt-acc{accuracy:.4f}.pickle')
 
 
 init_params()
