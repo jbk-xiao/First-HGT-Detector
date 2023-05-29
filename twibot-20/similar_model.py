@@ -113,17 +113,17 @@ class SimilarityModel(nn.Module):
         self.property_embedding = PropertyEmbedding(
             input_dim=(n_cat_prop + n_num_prop), hidden_dim=hidden_dim, dropout=dropout
         )
-        self.des_tweets_embedding = DesTweetConsistency(
-            feature_dim=text_feature_dim, hidden_dim=hidden_dim, dropout=dropout
-        )
-        self.bot_classifier = BotClassifier(input_dim=hidden_dim * 5, hidden_dim=hidden_dim, dropout=dropout)
+        # self.des_tweets_embedding = DesTweetConsistency(
+        #     feature_dim=text_feature_dim, hidden_dim=hidden_dim, dropout=dropout
+        # )
+        self.bot_classifier = BotClassifier(input_dim=hidden_dim * 2 + text_feature_dim * 2, hidden_dim=hidden_dim, dropout=dropout)
 
     def forward(self, x_dict, edge_index_dict, des, tweets):
         batch_size = des.shape[0]
         user_props = x_dict['user'][:batch_size]
         graph_emb = self.graph_embedding(x_dict, edge_index_dict)[:batch_size]
         prop_emb = self.property_embedding(user_props)
-        des_emb, consistency_emb, weighted_tweets_emb = self.des_tweets_embedding(des, tweets)
-        user_feature = torch.cat([graph_emb, prop_emb, des_emb, consistency_emb, weighted_tweets_emb], dim=1)
+        # des_emb, consistency_emb, weighted_tweets_emb = self.des_tweets_embedding(des, tweets)
+        user_feature = torch.cat([graph_emb, prop_emb, des, tweets], dim=1)
         return nn.Softmax(dim=-1)(self.bot_classifier(user_feature))
 

@@ -8,7 +8,8 @@ from datetime import datetime
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 
 from similar_model import SimilarityModel
-from build_hetero_user_data import build_hetero_data
+# from build_hetero_user_data import build_hetero_data
+from build_hetero_user_data_v2 import build_hetero_data # v2 loads weighted tweets
 
 device = "cuda:0"
 is_hgt_loader = False
