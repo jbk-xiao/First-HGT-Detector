@@ -27,12 +27,8 @@ def build_hetero_data() -> tuple[HeteroData, Tensor, Tensor]:
     label_tensor[0:len(label)] = label
     label = label_tensor.long()
 
-    print(f"{datetime.now()}----Loading tweet...")
-    tweet = torch.load(rf"{tmp_files_root}/tweet_tensor.pt")
-
     follow = torch.load(rf"{tmp_files_root}/follow_edge_index.pt")
     friend = torch.load(rf"{tmp_files_root}/friend_edge_index.pt")
-    post = torch.load(rf"{tmp_files_root}/post_edge_index.pt")
 
     # train_index = torch.load(rf"{tmp_files_root}/train_index.pt").long()
     train_idx = np.array(torch.load(rf"{tmp_files_root}/train_index.pt"))
