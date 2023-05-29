@@ -84,10 +84,13 @@ print(f"{datetime.now()}----Data loaded.")
 
 def forward_one_batch(batch, task):
     assert task in ['train', 'val', 'test']
-    batch = batch.to(device)
     cur_batch_size = batch['user'].batch_size
-    cur_des = des[batch['user'].input_id]
-    cur_tweets = user_tweets[batch['user'].input_id]
+    input_id = batch['user'].input_id
+    if task == 'test':
+        input_id += 10643
+    cur_des = des[input_id]
+    cur_tweets = user_tweets[input_id]
+    batch = batch.to(device)
     out = model(batch.x_dict, batch.edge_index_dict, cur_des.to(device), cur_tweets.to(device))
     return cur_batch_size, out
 

@@ -11,14 +11,14 @@ class GraphEmbedding(nn.Module):
             [HGTConv(in_channels=hidden_channels, out_channels=hidden_channels, metadata=meta_data, dropout=dropout)
              for _ in range(hgt_layers)]
         )
-        self.graph_emb_dim = nn.Sequential(nn.Linear(hidden_channels, hidden_dim), nn.LeakyReLU())
+        self.graph_emb_projection = nn.Sequential(nn.Linear(hidden_channels, hidden_dim), nn.LeakyReLU())
         self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, x_dict, edge_index_dict):
         for conv in self.convs:
             x_dict = conv(x_dict, edge_index_dict)
 
-        graph_emb = self.dropout(x_dict['user'])
+        graph_emb = self.dropout(self.graph_emb_projection(x_dict['user']))
         return graph_emb
 
 
@@ -76,6 +76,7 @@ class DesTweetConsistency(nn.Module):
                 (tweet_similarity - tweet_similarity.min(dim=-1).values.unsqueeze(dim=-1))
                 / (tweet_similarity.max(dim=-1).values - tweet_similarity.min(dim=-1).values).unsqueeze(dim=-1)
         )
+        weights[weights.isnan()] = 0
         weights = nn.Softmax(dim=-1)(- weights)
         l_weights = torch.matmul(weights, self.weight_matrix)  # shape: [batch_size, 200]
 
@@ -120,7 +121,7 @@ class SimilarityModel(nn.Module):
     def forward(self, x_dict, edge_index_dict, des, tweets):
         batch_size = des.shape[0]
         user_props = x_dict['user'][:batch_size]
-        graph_emb = self.graph_embedding(x_dict, edge_index_dict)
+        graph_emb = self.graph_embedding(x_dict, edge_index_dict)[:batch_size]
         prop_emb = self.property_embedding(user_props)
         des_emb, consistency_emb, weighted_tweets_emb = self.des_tweets_embedding(des, tweets)
         user_feature = torch.cat([graph_emb, prop_emb, des_emb, consistency_emb, weighted_tweets_emb], dim=1)
