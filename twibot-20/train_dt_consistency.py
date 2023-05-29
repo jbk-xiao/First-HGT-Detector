@@ -98,7 +98,7 @@ def forward_one_batch(batch, task):
 @torch.no_grad()
 def init_params():
     batch = next(iter(train_loader))
-    forward_one_batch(batch, 'test')
+    forward_one_batch(batch, 'val')
 
 
 def train():
