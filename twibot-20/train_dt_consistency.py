@@ -87,18 +87,20 @@ def forward_one_batch(batch, task):
     assert task in ['train', 'val', 'test']
     cur_batch_size = batch['user'].batch_size
     input_id = batch['user'].input_id
+    if task == 'val':
+        input_id += 8278
     if task == 'test':
         input_id += 10643
     cur_des = des[input_id]
     cur_tweets = user_tweets[input_id]
     batch = batch.to(device)
-    out = model(batch.x_dict, batch.edge_index_dict, cur_des.to(device), cur_tweets.to(device))
+    out = model(batch.x_dict, batch.edge_index_dict, cur_des.to(device), cur_tweets.to(device), cur_batch_size)
     return cur_batch_size, out
 
 
 @torch.no_grad()
 def init_params():
-    batch = next(iter(train_loader))
+    batch = next(iter(val_loader))
     forward_one_batch(batch, 'val')
 
 

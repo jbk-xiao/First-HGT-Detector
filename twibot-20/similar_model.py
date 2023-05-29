@@ -96,7 +96,7 @@ class BotClassifier(nn.Module):
     def __init__(self, input_dim, hidden_dim, dropout=0):
         super(BotClassifier, self).__init__()
         self.hidden_layer = nn.Sequential(nn.Linear(input_dim, hidden_dim), nn.LeakyReLU())
-        self.output_layer = nn.Sequential(nn.Linear(hidden_dim, 2), nn.LeakyReLU())
+        self.output_layer = nn.Sequential(nn.Linear(hidden_dim, 2), nn.LeakyReLU(), nn.Softmax(dim=-1))
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, feature):
@@ -118,12 +118,11 @@ class SimilarityModel(nn.Module):
         # )
         self.bot_classifier = BotClassifier(input_dim=hidden_dim * 2 + text_feature_dim * 2, hidden_dim=hidden_dim, dropout=dropout)
 
-    def forward(self, x_dict, edge_index_dict, des, tweets):
-        batch_size = des.shape[0]
+    def forward(self, x_dict, edge_index_dict, des, tweets, batch_size):
         user_props = x_dict['user'][:batch_size]
         graph_emb = self.graph_embedding(x_dict, edge_index_dict)[:batch_size]
         prop_emb = self.property_embedding(user_props)
         # des_emb, consistency_emb, weighted_tweets_emb = self.des_tweets_embedding(des, tweets)
         user_feature = torch.cat([graph_emb, prop_emb, des, tweets], dim=1)
-        return nn.Softmax(dim=-1)(self.bot_classifier(user_feature))
+        return self.bot_classifier(user_feature)
 
