@@ -2,7 +2,7 @@ import torch
 from torch import nn
 
 tmp_files_root = r"./preprocess/tmp-files"
-des = torch.load(rf"{tmp_files_root}/des_tensor.pt")
+des = torch.load(rf"{tmp_files_root}/des_tensor.pt")[0:11826]
 tweet = torch.load(rf"{tmp_files_root}/tweet_tensor.pt")
 post = torch.load(rf"{tmp_files_root}/post_edge_index.pt")
 user_tweets = []
