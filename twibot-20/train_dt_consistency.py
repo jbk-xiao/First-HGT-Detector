@@ -13,11 +13,12 @@ from build_hetero_user_data_v2 import build_hetero_data # v2 loads weighted twee
 
 device = "cuda:0"
 is_hgt_loader = False
-batch_size = 512
+train_batch_size = 512
+val_batch_size = 512
 test_batch_size = 1
 max_epoch = 20
 
-model = SimilarityModel(n_cat_prop=4, n_num_prop=5, text_feature_dim=768, hidden_dim=256, hgt_layers=2, dropout=0)\
+model = SimilarityModel(n_cat_prop=4, n_num_prop=5, text_feature_dim=768, hidden_dim=512, hgt_layers=2, dropout=0)\
     .to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=1e-5)
 
@@ -41,14 +42,14 @@ if is_hgt_loader:
         num_samples={key: [512] for key in data.node_types},
         shuffle=True,
         input_nodes=('user', data['user'].train_mask),
-        batch_size=batch_size,
+        batch_size=train_batch_size,
         num_workers=0)
     val_loader = HGTLoader(
         data,
         num_samples={key: [512] for key in data.node_types},
         shuffle=True,
         input_nodes=('user', data['user'].val_mask),
-        batch_size=batch_size,
+        batch_size=val_batch_size,
         num_workers=0)
     test_loader = HGTLoader(
         test_data,
@@ -63,14 +64,14 @@ else:
         num_neighbors={key: [-1] for key in data.edge_types},
         shuffle=True,
         input_nodes=('user', data['user'].train_mask),
-        batch_size=batch_size,
+        batch_size=train_batch_size,
         num_workers=0)
     val_loader = NeighborLoader(
         data,
         num_neighbors={key: [-1] for key in data.edge_types},
         shuffle=True,
         input_nodes=('user', data['user'].val_mask),
-        batch_size=batch_size,
+        batch_size=val_batch_size,
         num_workers=0)
     test_loader = NeighborLoader(
         test_data,
@@ -100,8 +101,8 @@ def forward_one_batch(batch, task):
 
 @torch.no_grad()
 def init_params():
-    batch = next(iter(val_loader))
-    forward_one_batch(batch, 'val')
+    batch = next(iter(train_loader))
+    forward_one_batch(batch, 'train')
 
 
 def train():
@@ -139,7 +140,8 @@ def val():
 
 
 @torch.no_grad()
-def test():
+def test(mode):
+    assert mode in ['acc', 'loss']
     model.eval()
 
     label = []
@@ -156,23 +158,37 @@ def test():
     precision = precision_score(label, out)
     recall = recall_score(label, out)
 
-    print(f"Test, accuracy: {accuracy:.4f}, f1: {f1:.4f}, precision: {precision:.4f}, recall: {recall:.4f}")
+    print(f"Best {mode} Test, accuracy: {accuracy:.4f}, f1: {f1:.4f}, precision: {precision:.4f}, recall: {recall:.4f}")
     torch.save(model, rf'./saved_models/dt-acc{accuracy:.4f}.pickle')
 
 
 init_params()
 best_val_acc = 0.0
-best_epoch = 0
-best_model = ''
+best_acc_loss = 9999.9
+best_val_loss = 9999.9
+best_loss_acc = 0.0
+best_acc_epoch = 0
+best_loss_epoch = 0
+best_acc_model = ''
+best_loss_model = ''
 for epoch in range(1, max_epoch + 1):
     train_acc, loss = train()
     val_acc, val_loss = val()
-    if val_acc > best_val_acc:
+    if val_acc >= best_val_acc:
         best_val_acc = val_acc
-        best_epoch = epoch
-        best_model = copy.deepcopy(model.state_dict())
+        best_acc_loss = val_loss
+        best_acc_epoch = epoch
+        best_acc_model = copy.deepcopy(model.state_dict())
+    if val_loss <= best_val_loss:
+        best_val_loss = val_loss
+        best_loss_acc = val_acc
+        best_loss_epoch = epoch
+        best_loss_model = copy.deepcopy(model.state_dict())
     print(f'Epoch: {epoch:03d}, Train_Acc: {train_acc:.4f}, Loss: {loss:.4f}, Val: {val_acc:.4f}, Loss: {val_loss:.4f}')
-print(f'Best val acc is: {best_val_acc:.4f}, in epoch: {best_epoch:03d}.')
-model.load_state_dict(best_model)
-test()
+print(f'Best val acc is: {best_val_acc:.4f}, in epoch: {best_acc_epoch:03d}, loss: {best_acc_loss:.4f}.')
+print(f'Best val loss is: {best_val_loss:.4f}, in epoch: {best_loss_epoch:03d}, acc: {best_loss_acc:.4f}.')
+model.load_state_dict(best_acc_model)
+test('acc')
+model.load_state_dict(best_loss_model)
+test('loss')
 
