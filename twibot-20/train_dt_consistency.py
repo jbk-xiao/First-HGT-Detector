@@ -11,6 +11,10 @@ from similar_model import SimilarityModel
 # from build_hetero_user_data import build_hetero_data
 from build_hetero_user_data_v2 import build_hetero_data # v2 loads weighted tweets
 
+# torch.manual_seed(230523)
+# torch.cuda.manual_seed(230523)
+# torch.cuda.manual_seed_all(230523)
+
 device = "cuda:0"
 is_hgt_loader = False
 train_batch_size = 512
