@@ -1,4 +1,5 @@
 import copy
+import random
 
 import torch
 from torch import nn
@@ -17,6 +18,7 @@ from build_hetero_user_data_v2 import build_hetero_data # v2 loads weighted twee
 
 device = "cuda:0"
 is_hgt_loader = False
+use_random_mask = False
 train_batch_size = 512
 val_batch_size = 512
 test_batch_size = 1
@@ -98,6 +100,13 @@ def forward_one_batch(batch, task):
         input_id += 10643
     cur_des = des[input_id]
     cur_tweets = user_tweets[input_id]
+    if task == 'train' and use_random_mask:
+        random_mask = random.randrange(0, 9)
+        batch['user'].x[:, random_mask] = 0
+        random_mask = random.choices(range(768), k=20)
+        cur_des[:, random_mask] = 0
+        random_mask = random.choices(range(768), k=20)
+        cur_tweets[:, random_mask] = 0
     batch = batch.to(device)
     out = model(batch.x_dict, batch.edge_index_dict, cur_des.to(device), cur_tweets.to(device), cur_batch_size)
     return cur_batch_size, out

@@ -22,12 +22,14 @@ for user_idx in range(11826):
 selected_tweets = []
 for user_idx in range(11826):
     similarity = torch.einsum('j, ij -> i', des[user_idx], user_tweets[user_idx])
+    # similarity = torch.sum(user_tweets[user_idx] * des[user_idx].unsqueeze(0), dim=1)
     if (similarity.max() - similarity.min()) != 0:
         weight = (similarity - similarity.min()) / (similarity.max() - similarity.min())
     else:
         weight = torch.zeros_like(similarity)
     weight = nn.Softmax(dim=-1)(- weight)
     weighted_tweets = torch.einsum('i, ij -> ij', weight, user_tweets[user_idx])
+    # weighted_tweets = user_tweets[user_idx] * weight.unsqueeze(1)
     selected_tweets.append(weighted_tweets.sum(dim=0))
 selected_tweets = torch.stack(selected_tweets)
-torch.save(selected_tweets, rf'{tmp_files_root}/weighted_tweets_by_des.pt')
+torch.save(selected_tweets, rf'{tmp_files_root}/weighted_tweets_by_des_v0.pt')
