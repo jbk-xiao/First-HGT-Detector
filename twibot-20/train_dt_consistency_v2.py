@@ -27,10 +27,12 @@ val_batch_size = 512
 test_batch_size = 1
 max_epoch = 20
 
-model = SimilarityModel(n_cat_prop=9, n_num_prop=768, text_feature_dim=768, hidden_dim=512, hgt_layers=2, dropout=0)\
+model = SimilarityModel(n_cat_prop=4, n_num_prop=5, text_feature_dim=768, hidden_dim=512, hgt_layers=2, dropout=0)\
     .to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=1e-5)
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=10, min_lr=1e-6, verbose=True)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    optimizer, mode='max', factor=0.8, patience=10, min_lr=1e-6, verbose=True
+)
 
 print(f"{datetime.now()}----Loading data...")
 data, des, user_tweets = build_hetero_data()
@@ -104,11 +106,11 @@ def forward_one_batch(batch, task):
     if task == 'test':
         input_id += 10643
     all_adj_matrix = []
-    for _, edge_index in batch.edge_index_dict:
-        adj_matrix = torch.zeros(cur_batch_size * cur_batch_size)
-        adj_matrix[edge_index[0] * cur_batch_size + edge_index[1]] = 1
-        adj_matrix[edge_index[1] * cur_batch_size + edge_index[0]] = 1
-        all_adj_matrix.append(adj_matrix.view([cur_batch_size, cur_batch_size]))
+    for edge_index in batch.edge_index_dict.values():
+        adj_matrix = torch.zeros(x_feature.shape[0] * x_feature.shape[0])
+        adj_matrix[edge_index[0] * x_feature.shape[0] + edge_index[1]] = 1
+        adj_matrix[edge_index[1] * x_feature.shape[0] + edge_index[0]] = 1
+        all_adj_matrix.append(adj_matrix.view([x_feature.shape[0], x_feature.shape[0]]))
     all_adj_matrix = torch.stack(all_adj_matrix, dim=2).to(device)
     # cur_des = batch['user'].x[:cur_batch_size, -768:]
     cur_des = des[input_id]
@@ -120,7 +122,7 @@ def forward_one_batch(batch, task):
         cur_des[:, random_mask] = 0
         random_mask = random.choices(range(768), k=20)
         cur_tweets[:, random_mask] = 0
-    # batch = batch.to(device)
+    batch.to(device)
     out = model(x_feature.to(device), all_adj_matrix, cur_des.to(device), cur_tweets.to(device), cur_batch_size)
     return cur_batch_size, out
 

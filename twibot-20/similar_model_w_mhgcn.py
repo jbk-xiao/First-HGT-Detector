@@ -101,7 +101,7 @@ class MHGCN(nn.Module):
     def forward(self, x_feature, all_adj_matrix):
         mh_adj_matrix = torch.matmul(all_adj_matrix, self.relation_weight)
         mh_adj_matrix = mh_adj_matrix.squeeze(dim=2)
-        mh_adj_matrix += mh_adj_matrix.transpose(0, 1)
+        mh_adj_matrix = mh_adj_matrix + mh_adj_matrix.transpose(0, 1)
         gc_output_list = []
         gc_output = x_feature
         for gc_layer in self.gc_layers:
@@ -142,7 +142,7 @@ class SimilarityModel(nn.Module):
         self.bot_classifier = BotClassifier(input_dim=hidden_dim * 2 + text_feature_dim * 1, hidden_dim=hidden_dim, dropout=dropout)
 
     def forward(self, x_feature, adj_matrix, des, tweets, batch_size):
-        user_props = x_feature['user'][:batch_size]
+        user_props = x_feature[:batch_size]
         graph_emb = self.graph_embedding(x_feature, adj_matrix)[:batch_size]
         prop_emb = self.property_embedding(user_props)
         # des_emb, consistency_emb, weighted_tweets_emb = self.des_tweets_embedding(des, tweets)
