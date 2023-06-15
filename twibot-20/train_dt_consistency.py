@@ -12,6 +12,8 @@ from similar_model import SimilarityModel
 # from build_hetero_user_data import build_hetero_data
 from build_hetero_user_data_v2 import build_hetero_data # v2 loads weighted tweets
 
+tseed = torch.initial_seed()
+tcseed = torch.cuda.initial_seed()
 # torch.manual_seed(230523)
 # torch.cuda.manual_seed(230523)
 # torch.cuda.manual_seed_all(230523)
@@ -26,7 +28,8 @@ max_epoch = 20
 
 model = SimilarityModel(n_cat_prop=4, n_num_prop=5, text_feature_dim=768, hidden_dim=512, hgt_layers=2, dropout=0)\
     .to(device)
-optimizer = torch.optim.AdamW(model.parameters(), lr=1e-5)
+optimizer = torch.optim.AdamW(model.parameters(), lr=5e-5)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=10, min_lr=1e-6, verbose=True)
 
 print(f"{datetime.now()}----Loading data...")
 data, des, user_tweets = build_hetero_data()
@@ -197,6 +200,7 @@ for epoch in range(1, max_epoch + 1):
         best_loss_acc = val_acc
         best_loss_epoch = epoch
         best_loss_model = copy.deepcopy(model.state_dict())
+    scheduler.step(val_acc)
     print(f'Epoch: {epoch:03d}, Train_Acc: {train_acc:.4f}, Loss: {loss:.4f}, Val: {val_acc:.4f}, Loss: {val_loss:.4f}')
 print(f'Best val acc is: {best_val_acc:.4f}, in epoch: {best_acc_epoch:03d}, loss: {best_acc_loss:.4f}.')
 print(f'Best val loss is: {best_val_loss:.4f}, in epoch: {best_loss_epoch:03d}, acc: {best_loss_acc:.4f}.')
@@ -204,4 +208,6 @@ model.load_state_dict(best_acc_model)
 test('acc')
 model.load_state_dict(best_loss_model)
 test('loss')
+print(tseed)
+print(tcseed)
 
