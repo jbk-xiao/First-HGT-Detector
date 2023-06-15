@@ -13,11 +13,11 @@ def build_hetero_data() -> tuple[HeteroData, Tensor, Tensor]:
     # cat_props = torch.split(torch.load(rf"{tmp_files_root}/cat_props_tensor.pt"), 11826)[0]
     # num_props = torch.split(torch.load(rf"{tmp_files_root}/num_props_tensor.pt"), 11826)[0]
     # des = torch.split(torch.load(rf"{tmp_files_root}/des_tensor.pt"), 11826)[0]
-    cat_props = torch.load(rf"{tmp_files_root}/cat_props_tensor.pt")  # shape: [229850, 4]
-    num_props = torch.load(rf"{tmp_files_root}/num_props_tensor.pt")  # shape: [229850, 5]
+    cat_props = torch.load(rf"{tmp_files_root}/cat_props_tensor.pt")[0:11826]  # shape: [229850, 4]
+    num_props = torch.load(rf"{tmp_files_root}/num_props_tensor.pt")[0:11826]  # shape: [229850, 5]
     des = torch.load(rf"{tmp_files_root}/des_tensor.pt")  # shape: [229850, word_emb_dim]
     des = des[0:11826]  # shape: [11826, word_emb_dim]
-    weighted_tweet = torch.load(rf"{tmp_files_root}/weighted_tweets_by_des.pt")
+    weighted_tweet = torch.load(rf"{tmp_files_root}/weighted_tweets_by_des_v6.pt")
     user_profiles = torch.concat([cat_props, num_props], dim=1)
     size_samples = user_profiles.size(dim=0)  # int
 
