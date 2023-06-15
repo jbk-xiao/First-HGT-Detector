@@ -21,8 +21,9 @@ for user_idx in range(11826):
 
 selected_tweets = []
 for user_idx in range(11826):
-    similarity = torch.einsum('j, ij -> i', des[user_idx], user_tweets[user_idx])
-    # similarity = torch.sum(user_tweets[user_idx] * des[user_idx].unsqueeze(0), dim=1)
+    # similarity = torch.einsum('j, ij -> i', des[user_idx], user_tweets[user_idx]) # v0
+    # similarity = torch.sum(user_tweets[user_idx] * des[user_idx].unsqueeze(0), dim=1) # v5
+    similarity = torch.cosine_similarity(user_tweets[user_idx], des[user_idx].unsqueeze(0)) # v6
     if (similarity.max() - similarity.min()) != 0:
         weight = (similarity - similarity.min()) / (similarity.max() - similarity.min())
     else:

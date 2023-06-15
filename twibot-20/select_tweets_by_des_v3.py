@@ -21,7 +21,7 @@ user_tweets = torch.stack(user_tweets)  # shape: [11826, 200, 768]
 
 # tweet_similarity = torch.sum(user_tweets * des.unsqueeze(1), dim=2)  # shape: [11826, 200]
 tweet_similarity = torch.einsum('bj, bij -> bi', des, user_tweets)  # shape: [11826, 200]
-pad_mask = (tweet_similarity == 0)
+pad_mask = (user_tweets.sum(dim=-1) == 0)
 
 weights = (
         (tweet_similarity - tweet_similarity.min(dim=-1).values.unsqueeze(dim=-1))
