@@ -8,14 +8,13 @@ from tqdm import tqdm
 from datetime import datetime
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 
-from similar_model import SimilarityModel
+from similar_model_w_mhgcn import SimilarityModel
 # from build_hetero_user_data import build_hetero_data
-from build_hetero_user_data_v3 import build_hetero_data # v3 loads weighted tweets and add des in user.x
+from build_hetero_user_data_v2 import build_hetero_data # v2 loads weighted tweets
+# from build_hetero_user_data_v3 import build_hetero_data # v3 loads weighted tweets and add des in user.x
 
 tseed = torch.initial_seed()
 tcseed = torch.cuda.initial_seed()
-print(tseed)
-print(tcseed)
 # torch.manual_seed(230523)
 # torch.cuda.manual_seed(230523)
 # torch.cuda.manual_seed_all(230523)
@@ -31,9 +30,10 @@ max_epoch = 20
 model = SimilarityModel(n_cat_prop=9, n_num_prop=768, text_feature_dim=768, hidden_dim=512, hgt_layers=2, dropout=0)\
     .to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=1e-5)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=10, min_lr=1e-6, verbose=True)
 
 print(f"{datetime.now()}----Loading data...")
-data, user_tweets = build_hetero_data()
+data, des, user_tweets = build_hetero_data()
 
 test_data = data.subgraph(
     {
@@ -97,22 +97,31 @@ print(f"{datetime.now()}----Data loaded.")
 def forward_one_batch(batch, task):
     assert task in ['train', 'val', 'test']
     cur_batch_size = batch['user'].batch_size
+    x_feature = batch.x_dict['user']
     input_id = batch['user'].input_id
     if task == 'val':
         input_id += 8278
     if task == 'test':
         input_id += 10643
-    cur_des = batch['user'].x[:cur_batch_size, -768:]
+    all_adj_matrix = []
+    for _, edge_index in batch.edge_index_dict:
+        adj_matrix = torch.zeros(cur_batch_size * cur_batch_size)
+        adj_matrix[edge_index[0] * cur_batch_size + edge_index[1]] = 1
+        adj_matrix[edge_index[1] * cur_batch_size + edge_index[0]] = 1
+        all_adj_matrix.append(adj_matrix.view([cur_batch_size, cur_batch_size]))
+    all_adj_matrix = torch.stack(all_adj_matrix, dim=2).to(device)
+    # cur_des = batch['user'].x[:cur_batch_size, -768:]
+    cur_des = des[input_id]
     cur_tweets = user_tweets[input_id]
     if task == 'train' and use_random_mask:
         random_mask = random.randrange(0, 9)
-        batch['user'].x[:, random_mask] = 0
+        x_feature[:, random_mask] = 0
         random_mask = random.choices(range(768), k=20)
         cur_des[:, random_mask] = 0
         random_mask = random.choices(range(768), k=20)
         cur_tweets[:, random_mask] = 0
-    batch = batch.to(device)
-    out = model(batch.x_dict, batch.edge_index_dict, cur_des.to(device), cur_tweets.to(device), cur_batch_size)
+    # batch = batch.to(device)
+    out = model(x_feature.to(device), all_adj_matrix, cur_des.to(device), cur_tweets.to(device), cur_batch_size)
     return cur_batch_size, out
 
 
@@ -176,7 +185,7 @@ def test(mode):
     recall = recall_score(label, out)
 
     print(f"Best {mode} Test, accuracy: {accuracy:.4f}, f1: {f1:.4f}, precision: {precision:.4f}, recall: {recall:.4f}")
-    torch.save(model, rf'./saved_models/dt-acc{accuracy:.4f}.pickle')
+    torch.save(model, rf'./saved_models/dt-w-mh-acc{accuracy:.4f}.pickle')
 
 
 init_params()
@@ -208,4 +217,6 @@ model.load_state_dict(best_acc_model)
 test('acc')
 model.load_state_dict(best_loss_model)
 test('loss')
+print(tseed)
+print(tcseed)
 
